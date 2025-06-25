@@ -1,0 +1,79 @@
+[Tue Jun 24 20:16:45 2025] PHP 8.1.2-1ubuntu2.21 Development Server (http://0.0.0.0:8000) started
+[Tue Jun 24 20:16:53 2025] 127.0.0.1:42032 Accepted
+[Tue Jun 24 20:16:53 2025] 127.0.0.1:42032 [200]: HEAD /login.html
+[Tue Jun 24 20:16:53 2025] 127.0.0.1:42032 Closing
+[Tue Jun 24 20:16:59 2025] 127.0.0.1:42034 Accepted
+[Tue Jun 24 20:16:59 2025] 127.0.0.1:42048 Accepted
+[Tue Jun 24 20:16:59 2025] 127.0.0.1:42034 [200]: GET /login.html
+[Tue Jun 24 20:16:59 2025] 127.0.0.1:42034 Closing
+[Tue Jun 24 20:17:00 2025] 127.0.0.1:42048 [404]: GET /favicon.ico - No such file or directory
+[Tue Jun 24 20:17:00 2025] 127.0.0.1:42048 Closing
+[Tue Jun 24 20:17:15 2025] 127.0.0.1:57830 Accepted
+[Tue Jun 24 20:17:15 2025] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/ubuntu/app_visitas/classes/Auth.php:12
+Stack trace:
+#0 /home/ubuntu/app_visitas/api/login.php(19): Auth->login()
+#1 {main}
+  thrown in /home/ubuntu/app_visitas/classes/Auth.php on line 12
+[Tue Jun 24 20:17:15 2025] 127.0.0.1:57830 [500]: POST /api/login.php - Uncaught Error: Call to a member function prepare() on null in /home/ubuntu/app_visitas/classes/Auth.php:12
+Stack trace:
+#0 /home/ubuntu/app_visitas/api/login.php(19): Auth->login()
+#1 {main}
+  thrown in /home/ubuntu/app_visitas/classes/Auth.php on line 12
+[Tue Jun 24 20:17:15 2025] 127.0.0.1:57830 Closing
+[Tue Jun 24 20:17:35 2025] 127.0.0.1:44930 Accepted
+[Tue Jun 24 20:17:35 2025] 127.0.0.1:44942 Accepted
+[Tue Jun 24 20:17:35 2025] 127.0.0.1:44930 [405]: GET /api/login.php
+[Tue Jun 24 20:17:35 2025] 127.0.0.1:44930 Closing
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:44942 Closed without sending a request; it was probably just an unused speculative preconnection
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:44942 Closing
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:47498 Accepted
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:47498 [200]: GET /login.html
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:47498 Closing
+[Tue Jun 24 20:18:50 2025] 127.0.0.1:47514 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:47514 [200]: POST /api/login.php
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:47514 Closing
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59082 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59092 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59082 [200]: GET /admin/index.html
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59082 Closing
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59092 [200]: GET /admin/js/admin.js
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59092 Closing
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59108 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59108 [200]: GET /api/usuarios.php
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59108 Closing
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59114 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59122 Accepted
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59114 [200]: GET /api/visitas.php?data_inicio=2025-06-25&data_fim=2025-06-25
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59114 Closing
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59122 [200]: GET /api/visitas.php
+[Tue Jun 24 20:19:07 2025] 127.0.0.1:59122 Closing
+[Tue Jun 24 20:19:16 2025] 127.0.0.1:59320 Accepted
+[Tue Jun 24 20:19:16 2025] 127.0.0.1:59320 [200]: GET /api/usuarios.php
+[Tue Jun 24 20:19:16 2025] 127.0.0.1:59320 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49194 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49200 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49194 [200]: GET /app/index.html
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49194 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49200 [200]: GET /app/js/app.js
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49200 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49204 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49204 [200]: GET /app/js/offline.js
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49204 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49208 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49210 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49208 [200]: GET /login.html
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49208 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49210 [200]: GET /admin/index.html
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49210 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49226 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49226 [200]: GET /admin/js/admin.js
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49226 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49238 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49238 [200]: GET /api/usuarios.php
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49238 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49240 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49240 [200]: GET /api/visitas.php?data_inicio=2025-06-25&data_fim=2025-06-25
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49240 Closing
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49246 Accepted
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49246 [200]: GET /api/visitas.php
+[Tue Jun 24 20:19:25 2025] 127.0.0.1:49246 Closing
