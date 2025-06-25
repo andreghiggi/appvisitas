@@ -1,9 +1,11 @@
-const CACHE_NAME = 'visitas-app-v1';
+const CACHE_NAME = 'visitas-app-v2';
 const urlsToCache = [
     './',
     './index.html',
+    '../login.html',
     './js/app.js',
     './js/offline.js',
+    './js/pwa-config.js',
     './manifest.json',
     './icons/icon-192x192.png',
     './icons/icon-512x512.png',
@@ -67,7 +69,7 @@ self.addEventListener('fetch', function(event) {
                 }).catch(function() {
                     // Se a requisição falhar e for uma navegação, retornar página offline
                     if (event.request.destination === 'document') {
-                        return caches.match('./index.html');
+                        return caches.match('./index.html'); // Retorna a página principal do PWA
                     }
                 });
             })
@@ -84,12 +86,12 @@ self.addEventListener('sync', function(event) {
 function doBackgroundSync() {
     return new Promise(function(resolve, reject) {
         // Verificar se há dados para sincronizar
-        const request = indexedDB.open('VisitasApp', 1);
+        const request = indexedDB.open('VisitasDB', 1); // Nome do DB corrigido
         
         request.onsuccess = function(event) {
             const db = event.target.result;
-            const transaction = db.transaction(['sync_queue'], 'readonly');
-            const store = transaction.objectStore('sync_queue');
+            const transaction = db.transaction(['pendingSync'], 'readonly'); // Store name corrigido
+            const store = transaction.objectStore('pendingSync');
             
             store.getAll().onsuccess = function(event) {
                 const pendingData = event.target.result;
@@ -112,38 +114,56 @@ function doBackgroundSync() {
 }
 
 function syncPendingData(pendingData) {
-    const visitas = pendingData.map(item => item.data);
-    
-    return fetch('../api/sincronizar.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            visitas: visitas
+    // A API de sincronização espera um array de objetos, não um objeto com uma chave 'visitas'
+    // O app.js já envia o objeto completo, então aqui precisamos apenas iterar sobre os dados pendentes
+    const syncPromises = pendingData.map(data => {
+        return fetch('../api/sincronizar.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data) // Envia o objeto de visita diretamente
         })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.sucessos > 0) {
-            // Limpar dados sincronizados
-            return clearSyncQueue();
-        }
-        throw new Error('Falha na sincronização');
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                console.log('Dados sincronizados com sucesso:', data);
+                return data; // Retorna os dados sincronizados para remoção da fila
+            } else {
+                console.error('Erro ao sincronizar dados:', result.message, data);
+                throw new Error('Falha na sincronização para ' + data.cliente_nome);
+            }
+        });
+    });
+
+    return Promise.allSettled(syncPromises).then(results => {
+        const successfullySynced = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+        // Limpar apenas os dados que foram sincronizados com sucesso
+        return clearSyncedData(successfullySynced);
     });
 }
 
-function clearSyncQueue() {
+function clearSyncedData(syncedData) {
     return new Promise(function(resolve, reject) {
-        const request = indexedDB.open('VisitasApp', 1);
+        const request = indexedDB.open('VisitasDB', 1);
         
         request.onsuccess = function(event) {
             const db = event.target.result;
-            const transaction = db.transaction(['sync_queue'], 'readwrite');
-            const store = transaction.objectStore('sync_queue');
+            const transaction = db.transaction(['pendingSync'], 'readwrite');
+            const store = transaction.objectStore('pendingSync');
             
-            store.clear().onsuccess = function() {
+            syncedData.forEach(data => {
+                // Remove o item do IndexedDB usando a chave primária (id)
+                if (data.id) {
+                    store.delete(data.id);
+                }
+            });
+
+            transaction.oncomplete = function() {
                 resolve();
+            };
+            transaction.onerror = function(event) {
+                reject('Erro ao limpar dados sincronizados: ' + event.target.errorCode);
             };
         };
         
@@ -193,7 +213,7 @@ self.addEventListener('notificationclick', function(event) {
             clients.matchAll().then(function(clientList) {
                 for (var i = 0; i < clientList.length; i++) {
                     var client = clientList[i];
-                    if (client.url === '/' && 'focus' in client) {
+                    if (client.url.endsWith('/app/') && 'focus' in client) { // Corrigido para URL do PWA
                         return client.focus();
                     }
                 }
@@ -218,4 +238,5 @@ self.addEventListener('message', function(event) {
         self.skipWaiting();
     }
 });
+
 
