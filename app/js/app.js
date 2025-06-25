@@ -492,225 +492,215 @@ function showModalVisita() {
     modal.show();
 }
 
-// Criar visita de retorno
+// Criar visita a partir de retorno agendado
 function criarVisitaRetorno(clienteNome, retornoDataHora) {
-    const modal = new bootstrap.Modal(document.getElementById('modalVisita'));
-    const form = document.getElementById('formVisita');
-    
-    form.reset();
-    
-    // Preencher dados do retorno
+    showModalVisita();
     document.getElementById('cliente-nome').value = clienteNome;
     
-    const dataRetorno = new Date(retornoDataHora);
-    document.getElementById('visita-data').value = dataRetorno.toISOString().split('T')[0];
-    document.getElementById('visita-hora').value = dataRetorno.toTimeString().split(' ')[0].substring(0, 5);
-    
-    modal.show();
+    if (retornoDataHora) {
+        const data = new Date(retornoDataHora);
+        document.getElementById('visita-data').value = data.toISOString().split('T')[0];
+        document.getElementById('visita-hora').value = data.toTimeString().split(' ')[0].substring(0, 5);
+    }
 }
 
 // Salvar visita
-function salvarVisita() {
-    const loading = document.querySelector('#modalVisita .loading');
-    const submitBtn = document.querySelector('#modalVisita .btn-primary');
-    
-    loading.classList.add('show');
-    submitBtn.disabled = true;
-    
-    const data = {
-        cliente_nome: document.getElementById('cliente-nome').value,
-        data_hora: document.getElementById('visita-data').value + ' ' + document.getElementById('visita-hora').value + ':00',
-        situacao: document.getElementById('visita-situacao').value,
-        observacoes: document.getElementById('visita-observacoes').value
-    };
-    
-    // Verificar se deve agendar retorno
-    if (document.getElementById('agendar-retorno').checked) {
-        const retornoData = document.getElementById('retorno-data').value;
-        const retornoHora = document.getElementById('retorno-hora').value;
-        
-        if (retornoData && retornoHora) {
-            data.retorno_data_hora = retornoData + ' ' + retornoHora + ':00';
-        }
-    }
-    
-    if (isOnline) {
-        // Salvar online
-        fetch(API_BASE + 'visitas.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.message) {
-                alert('Visita salva com sucesso!');
-                bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
-                loadDashboard();
-                
-                // Agendar notificação se houver retorno
-                if (data.retorno_data_hora) {
-                    scheduleNotification(data.cliente_nome, data.retorno_data_hora);
-                }
-            }
-        })
-        .catch(error => {
-            // Se falhar online, salvar offline
-            saveOfflineVisita(data);
-        })
-        .finally(() => {
-            loading.classList.remove('show');
-            submitBtn.disabled = false;
-        });
-    } else {
-        // Salvar offline
-        saveOfflineVisita(data);
-        loading.classList.remove('show');
-        submitBtn.disabled = false;
-    }
-}
+async function salvarVisita() {
+    const clienteNome = document.getElementById('cliente-nome').value;
+    const visitaData = document.getElementById('visita-data').value;
+    const visitaHora = document.getElementById('visita-hora').value;
+    const visitaSituacao = document.getElementById('visita-situacao').value;
+    const visitaObservacoes = document.getElementById('visita-observacoes').value;
+    const agendarRetorno = document.getElementById('agendar-retorno').checked;
+    const retornoData = document.getElementById('retorno-data').value;
+    const retornoHora = document.getElementById('retorno-hora').value;
 
-// Salvar visita offline
-function saveOfflineVisita(data) {
-    // Adicionar ID temporário
-    data.id = 'temp_' + Date.now();
-    data.sync_status = 'pending';
-    
-    // Salvar na lista de visitas offline
-    const visitasOffline = getOfflineData('visitas') || [];
-    visitasOffline.push(data);
-    saveOfflineData('visitas', visitasOffline);
-    
-    // Adicionar à lista de sincronização pendente
-    const pendingSync = getOfflineData('pendingSync') || [];
-    pendingSync.push(data);
-    saveOfflineData('pendingSync', pendingSync);
-    
-    alert('Visita salva offline! Será sincronizada quando a conexão for restabelecida.');
+    if (!clienteNome || !visitaData || !visitaHora || !visitaSituacao) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+
+    const visita = {
+        cliente_nome: clienteNome,
+        data_hora: `${visitaData} ${visitaHora}:00`,
+        situacao: visitaSituacao,
+        observacoes: visitaObservacoes,
+        retorno_data_hora: agendarRetorno ? `${retornoData} ${retornoHora}:00` : null,
+        id_usuario: currentUser.id,
+        sync_status: 'pending' // Adiciona status de sincronização
+    };
+
+    // Salvar localmente (IndexedDB)
+    await saveOfflineData('visitas', visita);
+    await saveOfflineData('pendingSync', visita);
+
+    alert('Visita registrada com sucesso! Será sincronizada em breve.');
     bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
     loadDashboard();
-    
-    // Agendar notificação se houver retorno
-    if (data.retorno_data_hora) {
-        scheduleNotification(data.cliente_nome, data.retorno_data_hora);
+    updateSyncStatus();
+
+    // Tentar sincronizar imediatamente se online
+    if (isOnline) {
+        syncData();
     }
 }
 
 // Sincronizar dados
-function syncData() {
+async function syncData() {
     if (!isOnline) {
-        alert('Sem conexão com a internet. Não é possível sincronizar.');
+        console.log('Offline. Sincronização adiada.');
         return;
     }
-    
-    const pendingSync = getOfflineData('pendingSync') || [];
-    
-    if (pendingSync.length === 0) {
-        alert('Nenhum dado pendente para sincronização.');
-        return;
-    }
-    
+
     const syncIndicator = document.getElementById('sync-indicator');
     syncIndicator.style.display = 'block';
-    
-    // Filtrar apenas visitas (remover IDs temporários)
-    const visitasParaSync = pendingSync.map(item => {
-        const { id, sync_status, ...visitaData } = item;
-        return visitaData;
-    });
-    
-    fetch(API_BASE + 'sincronizar.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            visitas: visitasParaSync
-        })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.sucessos > 0) {
-            // Limpar dados sincronizados
-            saveOfflineData('pendingSync', []);
-            
-            // Atualizar timestamp da última sincronização
-            localStorage.setItem('lastSync', new Date().toISOString());
-            
-            alert(`Sincronização concluída! ${result.sucessos} visitas sincronizadas.`);
-            
-            // Recarregar dados
-            loadDashboard();
-            updateSyncStatus();
-        } else {
-            alert('Erro na sincronização: ' + result.message);
-        }
-    })
-    .catch(error => {
-        alert('Erro na sincronização: ' + error.message);
-    })
-    .finally(() => {
+
+    let pendingData = await getOfflineData('pendingSync') || [];
+    console.log('Dados pendentes para sincronização:', pendingData);
+
+    if (pendingData.length === 0) {
+        console.log('Nenhum dado pendente para sincronização.');
         syncIndicator.style.display = 'none';
+        localStorage.setItem('lastSync', new Date().toISOString());
+        updateSyncStatus();
+        return;
+    }
+
+    for (const data of pendingData) {
+        try {
+            const response = await fetch(API_BASE + 'sincronizar.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log('Dados sincronizados com sucesso:', data);
+                // Remover da fila de pendentes
+                pendingData = pendingData.filter(item => item !== data);
+                await saveOfflineData('pendingSync', pendingData, true); // Sobrescrever a lista
+            } else {
+                console.error('Erro ao sincronizar dados:', result.message, data);
+            }
+        } catch (error) {
+            console.error('Erro de rede durante a sincronização:', error, data);
+            // Manter na fila para tentar novamente mais tarde
+        }
+    }
+
+    syncIndicator.style.display = 'none';
+    localStorage.setItem('lastSync', new Date().toISOString());
+    updateSyncStatus();
+    loadDashboard(); // Recarregar dados após sincronização
+    alert('Sincronização concluída!');
+}
+
+// Funções de utilidade para IndexedDB (do offline.js)
+async function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('VisitasDB', 1);
+
+        request.onupgradeneeded = function(event) {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('visitas')) {
+                db.createObjectStore('visitas', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('pendingSync')) {
+                db.createObjectStore('pendingSync', { keyPath: 'id', autoIncrement: true });
+            }
+        };
+
+        request.onsuccess = function(event) {
+            resolve(event.target.result);
+        };
+
+        request.onerror = function(event) {
+            reject('Erro ao abrir o banco de dados: ' + event.target.errorCode);
+        };
     });
 }
 
-// Agendar notificação
-function scheduleNotification(clienteNome, dataHora) {
-    if ('Notification' in window && 'serviceWorker' in navigator) {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                const dataRetorno = new Date(dataHora);
-                const agora = new Date();
-                const delay = dataRetorno.getTime() - agora.getTime();
-                
-                if (delay > 0) {
-                    setTimeout(() => {
-                        new Notification('Lembrete de Retorno', {
-                            body: `Você tem um retorno agendado com ${clienteNome}`,
-                            icon: 'icons/icon-192x192.png',
-                            badge: 'icons/icon-192x192.png'
-                        });
-                    }, delay);
+async function saveOfflineData(storeName, data, overwrite = false) {
+    const db = await openDatabase();
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+        if (overwrite) {
+            store.clear().onsuccess = () => {
+                if (Array.isArray(data)) {
+                    let count = 0;
+                    if (data.length === 0) {
+                        resolve();
+                        return;
+                    }
+                    data.forEach(item => {
+                        store.add(item).onsuccess = () => {
+                            count++;
+                            if (count === data.length) {
+                                resolve();
+                            }
+                        };
+                    });
+                } else {
+                    store.add(data).onsuccess = () => resolve();
                 }
-            }
-        });
-    }
+            };
+        } else {
+            store.add(data).onsuccess = () => resolve();
+        }
+
+        transaction.oncomplete = () => console.log(`${storeName} transaction complete.`);
+        transaction.onerror = (event) => reject(`Erro na transação ${storeName}: ` + event.target.errorCode);
+    });
 }
 
-// Funções utilitárias
-function formatDateTime(dateTime) {
-    const date = new Date(dateTime);
-    return date.toLocaleString('pt-BR');
+async function getOfflineData(storeName) {
+    const db = await openDatabase();
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+
+    return new Promise((resolve, reject) => {
+        const request = store.getAll();
+
+        request.onsuccess = function() {
+            resolve(request.result);
+        };
+
+        request.onerror = function(event) {
+            reject('Erro ao obter dados: ' + event.target.errorCode);
+        };
+    });
+}
+
+// Funções de formatação
+function formatDateTime(dateTimeStr) {
+    if (!dateTimeStr) return '';
+    const date = new Date(dateTimeStr);
+    return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function formatSituacao(situacao) {
-    const situacoes = {
-        'realizada': 'Realizada',
-        'nao_atendeu': 'Não Atendeu',
-        'remarcar': 'Remarcar',
-        'cancelada': 'Cancelada'
-    };
-    return situacoes[situacao] || situacao;
-}
-
-// Funções de armazenamento offline
-function getOfflineData(key) {
-    try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.error('Erro ao ler dados offline:', error);
-        return null;
+    switch (situacao) {
+        case 'realizada': return 'Realizada';
+        case 'nao_atendeu': return 'Não Atendeu';
+        case 'remarcar': return 'Remarcar';
+        case 'cancelada': return 'Cancelada';
+        default: return situacao;
     }
 }
 
-function saveOfflineData(key, data) {
-    try {
-        localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-        console.error('Erro ao salvar dados offline:', error);
-    }
-}
-
+// Expor funções globalmente para uso no HTML
+window.logout = logout;
+window.showSection = showSection;
+window.showModalVisita = showModalVisita;
+window.filtrarVisitas = filtrarVisitas;
+window.filtrarAgenda = filtrarAgenda;
+window.criarVisitaRetorno = criarVisitaRetorno;
+window.salvarVisita = salvarVisita;
+window.syncData = syncData;
+window.updateSyncStatus = updateSyncStatus;
