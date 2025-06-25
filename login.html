@@ -108,21 +108,32 @@
     <script>
         const API_BASE = 'api/';
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // Registrar Service Worker
+        if (\'serviceWorker\' in navigator) {
+            window.addEventListener(\'load\', function() {
+                navigator.serviceWorker.register(\'./sw.js\', { scope: \'./\' }).then(function(registration) {
+                    console.log(\'ServiceWorker registration successful with scope: \', registration.scope);
+                }).catch(function(err) {
+                    console.log(\'ServiceWorker registration failed: \', err);
+                });
+            });
+        }
+
+        document.getElementById(\'loginForm\').addEventListener(\'submit\', function(e) {
             e.preventDefault();
             
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            const loading = document.querySelector('.loading');
-            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const email = document.getElementById(\'email\').value;
+            const senha = document.getElementById(\'senha\').value;
+            const loading = document.querySelector(\'.loading\');
+            const submitBtn = e.target.querySelector(\'button[type="submit"]\');
             
-            loading.classList.add('show');
+            loading.classList.add(\'show\');
             submitBtn.disabled = true;
             
-            fetch(API_BASE + 'login.php', {
-                method: 'POST',
+            fetch(API_BASE + \'login.php\', {
+                method: \'POST\',
                 headers: {
-                    'Content-Type': 'application/json'
+                    \'Content-Type\': \'application/json\'
                 },
                 body: JSON.stringify({
                     email: email,
@@ -132,44 +143,54 @@
             .then(response => response.json())
             .then(data => {
                 if (data.usuario) {
-                    sessionStorage.setItem('userData', JSON.stringify(data.usuario));
+                    sessionStorage.setItem(\'userData\', JSON.stringify(data.usuario));
+                    localStorage.setItem(\'userData\', JSON.stringify(data.usuario)); // Salva para login offline
                     
-                    if (data.usuario.perfil === 'administrador') {
-                        window.location.href = 'admin/index.html';
+                    if (data.usuario.perfil === \'administrador\') {
+                        window.location.href = \'admin/index.html\';
                     } else {
-                        window.location.href = 'app/index.html';
+                        window.location.href = \'app/index.html\';
                     }
                 } else {
-                    alert(data.message || 'Erro ao fazer login');
+                    alert(data.message || \'Erro ao fazer login\');
                 }
             })
             .catch(error => {
-                alert('Erro de conexão: ' + error.message);
+                alert(\'Erro de conexão: \' + error.message);
             })
             .finally(() => {
-                loading.classList.remove('show');
+                loading.classList.remove(\'show\');
                 submitBtn.disabled = false;
             });
         });
 
         function preencherCredenciais() {
-            document.getElementById('email').value = 'admin@example.com';
-            document.getElementById('senha').value = 'admin123';
+            document.getElementById(\'email\').value = \'admin@example.com\';
+            document.getElementById(\'senha\').value = \'admin123\';
         }
 
-        // Verificar se já está logado
-        document.addEventListener('DOMContentLoaded', function() {
-            const userData = sessionStorage.getItem('userData');
+        // Verificar se já está logado (offline-first)
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            let userData = sessionStorage.getItem(\'userData\');
+            if (!userData) {
+                userData = localStorage.getItem(\'userData\');
+            }
+
             if (userData) {
                 const user = JSON.parse(userData);
-                if (user.perfil === 'administrador') {
-                    window.location.href = 'admin/index.html';
-                } else {
-                    window.location.href = 'app/index.html';
+                // Não redireciona automaticamente se estiver offline e na página de login
+                // A lógica de login offline será tratada pela função login(email, senha)
+                if (navigator.onLine) { // Redireciona apenas se estiver online
+                    if (user.perfil === \'administrador\') {
+                        window.location.href = \'admin/index.html\';
+                    } else {
+                        window.location.href = \'app/index.html\';
+                    }
                 }
             }
         });
     </script>
 </body>
 </html>
+
 

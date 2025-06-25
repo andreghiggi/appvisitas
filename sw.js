@@ -1,13 +1,15 @@
-const CACHE_NAME = 'visitas-app-v3'; // Versão do cache atualizada
+const CACHE_NAME = 'visitas-app-v4'; // Versão do cache atualizada para forçar reinstalação
 const urlsToCache = [
-    './',
-    './index.html',
-    './js/app.js',
-    './js/offline.js',
-    './js/pwa-config.js',
-    './manifest.json',
-    './icons/icon-192x192.png',
-    './icons/icon-512x512.png',
+    './login.html',
+    './admin/index.html',
+    './admin/js/admin.js',
+    './app/index.html',
+    './app/js/app.js',
+    './app/js/offline.js',
+    './app/js/pwa-config.js',
+    './app/manifest.json',
+    './app/icons/icon-192x192.png',
+    './app/icons/icon-512x512.png',
     // URLs de CDN - é crucial que essas sejam acessíveis durante a primeira instalação
     'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js',
@@ -15,12 +17,11 @@ const urlsToCache = [
 ];
 
 // Instalar Service Worker
-self.addEventListener('install', function(event ) {
+self.addEventListener('install', function(event) {
     console.log('Service Worker: Instalando e cacheadando arquivos...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(function(cache) {
-                // Usar Promise.all com cache.add para maior resiliência
                 return Promise.all(urlsToCache.map(function(url) {
                     return cache.add(url).catch(function(error) {
                         console.warn('Service Worker: Falha ao cachear URL:', url, error);
@@ -63,21 +64,17 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
         caches.match(event.request)
             .then(function(response) {
-                // Cache hit - retornar resposta do cache
                 if (response) {
                     console.log('Service Worker: Servindo do cache:', event.request.url);
                     return response;
                 }
 
-                // Tentar buscar da rede
                 return fetch(event.request).then(function(response) {
-                    // Verificar se recebemos uma resposta válida
                     if (!response || response.status !== 200 || response.type !== 'basic') {
                         console.log('Service Worker: Resposta inválida da rede para:', event.request.url);
                         return response;
                     }
 
-                    // Clonar a resposta e armazenar no cache
                     var responseToCache = response.clone();
                     caches.open(CACHE_NAME)
                         .then(function(cache) {
@@ -88,28 +85,25 @@ self.addEventListener('fetch', function(event) {
                     return response;
                 }).catch(function(error) {
                     console.error('Service Worker: Falha na requisição de rede para:', event.request.url, error);
-                    // Se a requisição falhar e for uma navegação, retornar página offline
                     if (event.request.destination === 'document') {
-                        console.log('Service Worker: Requisição de documento falhou, tentando fallback para index.html');
-                        return caches.match('./index.html').then(fallbackResponse => {
+                        console.log('Service Worker: Requisição de documento falhou, tentando fallback para login.html');
+                        return caches.match('./login.html').then(fallbackResponse => {
                             if (fallbackResponse) {
-                                console.log('Service Worker: Servindo index.html do cache como fallback.');
+                                console.log('Service Worker: Servindo login.html do cache como fallback.');
                                 return fallbackResponse;
                             } else {
-                                console.error('Service Worker: index.html não encontrado no cache para fallback.');
-                                // Pode retornar uma página de erro offline genérica aqui se tiver uma
+                                console.error('Service Worker: login.html não encontrado no cache para fallback.');
                                 return new Response('<h1>Offline</h1><p>Não foi possível carregar a página e não há versão offline disponível.</p>', { headers: { 'Content-Type': 'text/html' } });
                             }
                         });
                     }
-                    // Para outros tipos de requisição (imagens, scripts, etc.), pode retornar uma resposta vazia ou um placeholder
                     return new Response(null, { status: 503, statusText: 'Service Unavailable' });
                 });
             })
     );
 });
 
-// Sincronização em background (mantido como está, mas com correção de nome do DB)
+// Sincronização em background
 self.addEventListener('sync', function(event) {
     if (event.tag === 'background-sync') {
         console.log('Service Worker: Evento de sincronização em background acionado.');
@@ -119,11 +113,11 @@ self.addEventListener('sync', function(event) {
 
 function doBackgroundSync() {
     return new Promise(function(resolve, reject) {
-        const request = indexedDB.open('VisitasDB', 1); // Nome do DB corrigido
+        const request = indexedDB.open('VisitasDB', 1);
         
         request.onsuccess = function(event) {
             const db = event.target.result;
-            const transaction = db.transaction(['pendingSync'], 'readonly'); // Store name corrigido
+            const transaction = db.transaction(['pendingSync'], 'readonly');
             const store = transaction.objectStore('pendingSync');
             
             store.getAll().onsuccess = function(event) {
@@ -150,7 +144,7 @@ function doBackgroundSync() {
 
 function syncPendingData(pendingData) {
     const syncPromises = pendingData.map(data => {
-        return fetch('../api/sincronizar.php', {
+        return fetch('./api/sincronizar.php', { // Caminho ajustado para a raiz
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -161,7 +155,7 @@ function syncPendingData(pendingData) {
         .then(result => {
             if (result.success) {
                 console.log('Service Worker: Dados sincronizados com sucesso:', data);
-                return data; // Retorna os dados sincronizados para remoção da fila
+                return data; 
             } else {
                 console.error('Service Worker: Erro ao sincronizar dados:', result.message, data);
                 throw new Error('Falha na sincronização para ' + data.cliente_nome);
@@ -169,7 +163,7 @@ function syncPendingData(pendingData) {
         })
         .catch(error => {
             console.error('Service Worker: Erro de rede/API durante a sincronização:', error, data);
-            throw error; // Rejeita para que o Promise.allSettled capture
+            throw error; 
         });
     });
 
@@ -195,13 +189,9 @@ function clearSyncedData(syncedData) {
             const store = transaction.objectStore('pendingSync');
             
             syncedData.forEach(data => {
-                // Remove o item do IndexedDB usando a chave primária (id)
-                // Assumimos que 'id' é a chave primária autoIncrement
                 if (data.id) {
                     store.delete(data.id);
                 } else {
-                    // Se não tiver ID, pode ser necessário buscar pelo conteúdo ou outra forma
-                    // Para este caso, como é autoIncrement, o ID deve existir após o saveOfflineData
                     console.warn('Service Worker: Tentando limpar dado sem ID:', data);
                 }
             });
@@ -223,12 +213,12 @@ function clearSyncedData(syncedData) {
     });
 }
 
-// Notificações push (mantido como está)
+// Notificações push
 self.addEventListener('push', function(event) {
     const options = {
         body: event.data ? event.data.text() : 'Nova notificação',
-        icon: './icons/icon-192x192.png',
-        badge: './icons/icon-192x192.png',
+        icon: './app/icons/icon-192x192.png', // Caminho ajustado
+        badge: './app/icons/icon-192x192.png', // Caminho ajustado
         vibrate: [100, 50, 100],
         data: {
             dateOfArrival: Date.now(),
@@ -238,12 +228,12 @@ self.addEventListener('push', function(event) {
             {
                 action: 'explore',
                 title: 'Abrir App',
-                icon: './icons/icon-192x192.png'
+                icon: './app/icons/icon-192x192.png' // Caminho ajustado
             },
             {
                 action: 'close',
                 title: 'Fechar',
-                icon: './icons/icon-192x192.png'
+                icon: './app/icons/icon-192x192.png' // Caminho ajustado
             }
         ]
     };
@@ -253,7 +243,7 @@ self.addEventListener('push', function(event) {
     );
 });
 
-// Clique em notificação (mantido como está)
+// Clique em notificação
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
 
@@ -267,23 +257,25 @@ self.addEventListener('notificationclick', function(event) {
                     }
                 }
                 if (clients.openWindow) {
-                    return clients.openWindow('./');
+                    return clients.openWindow('./app/'); // Caminho ajustado
                 }
             })
         );
     }
 });
 
-// Mensagens do cliente (mantido como está)
+// Mensagens do cliente
 self.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
 });
 
-// Atualização do Service Worker (mantido como está)
+// Atualização do Service Worker
 self.addEventListener('message', function(event) {
     if (event.data.action === 'skipWaiting') {
         self.skipWaiting();
     }
 });
+
+
