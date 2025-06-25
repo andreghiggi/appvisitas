@@ -16,7 +16,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Verificar autenticação
 function checkAuth() {
-    const userData = sessionStorage.getItem('userData');
+    let userData = sessionStorage.getItem('userData');
+    if (!userData) {
+        // Tenta carregar do localStorage se não estiver em sessionStorage
+        userData = localStorage.getItem('userData');
+    }
+
     if (userData) {
         currentUser = JSON.parse(userData);
         if (currentUser.perfil !== 'vendedor') {
@@ -29,6 +34,7 @@ function checkAuth() {
         document.getElementById('perfil-email').textContent = currentUser.email;
         loadDashboard();
     } else {
+        // Se não há dados de usuário, redireciona para o login
         window.location.href = '../login.html';
     }
 }
@@ -60,18 +66,70 @@ function updateOnlineStatus() {
 // Logout
 function logout() {
     if (confirm('Deseja realmente sair?')) {
+        // Sempre limpa o localStorage e sessionStorage ao fazer logout
+        localStorage.removeItem('userData');
+        sessionStorage.removeItem('userData');
+
         if (isOnline) {
             fetch(API_BASE + 'logout.php', {
                 method: 'POST'
             })
             .then(() => {
-                sessionStorage.removeItem('userData');
                 window.location.href = '../login.html';
+            })
+            .catch(error => {
+                console.error('Erro ao fazer logout online:', error);
+                window.location.href = '../login.html'; // Redireciona mesmo com erro de rede
             });
         } else {
-            sessionStorage.removeItem('userData');
             window.location.href = '../login.html';
         }
+    }
+}
+
+// Função de login (a ser chamada do login.html)
+async function login(email, senha) {
+    if (!isOnline) {
+        // Tenta login offline
+        const storedUser = localStorage.getItem('userData');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            if (user.email === email && user.senha === senha) { // ATENÇÃO: Senha em texto puro, apenas para demonstração
+                sessionStorage.setItem('userData', JSON.stringify(user));
+                window.location.href = 'app/index.html';
+                return;
+            }
+        }
+        alert('Você está offline. Para o primeiro login ou para validar credenciais não salvas, é necessária uma conexão com a internet.');
+        return;
+    }
+
+    // Login online
+    try {
+        const response = await fetch(API_BASE + 'login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email: email, senha: senha })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            sessionStorage.setItem('userData', JSON.stringify(data.user));
+            localStorage.setItem('userData', JSON.stringify(data.user)); // Salva para login offline
+            if (data.user.perfil === 'administrador') {
+                window.location.href = 'admin/index.html';
+            } else if (data.user.perfil === 'vendedor') {
+                window.location.href = 'app/index.html';
+            }
+        } else {
+            alert('Erro no login: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Erro de conexão:', error);
+        alert('Erro de Conexão: ' + error.message + '. Verifique sua internet.');
     }
 }
 
@@ -704,3 +762,4 @@ window.criarVisitaRetorno = criarVisitaRetorno;
 window.salvarVisita = salvarVisita;
 window.syncData = syncData;
 window.updateSyncStatus = updateSyncStatus;
+window.login = login; // Expondo a função de login
