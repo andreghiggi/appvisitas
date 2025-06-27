@@ -29,7 +29,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, var(--primary-color ) 0%, var(--secondary-color) 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             padding: 1rem;
             position: sticky;
@@ -469,7 +469,10 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Salvar Visita</button>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <span class="loading spinner-border spinner-border-sm me-2" role="status"></span>
+                            Salvar Visita
+                        </button>
                     </form>
                 </div>
             </div>
@@ -482,53 +485,51 @@
     <script>
         // Registrar Service Worker
         if (
-            \"serviceWorker\"
-            in navigator
-         ) {
+            "serviceWorker" in navigator &&
+            (window.location.protocol === "https:" ||
+                window.location.hostname === "localhost")
+        ) {
             window.addEventListener(
-                \"load\",
+                "load",
                 function () {
                     navigator.serviceWorker
-                        .register(
-                            \"/sw.js\",
-                            {
-                                scope: \"/\"
-                            }
-                        )
+                        .register("../sw.js", { scope: "../" })
                         .then(function (registration) {
                             console.log(
-                                \"ServiceWorker registration successful with scope: \",
+                                "ServiceWorker registration successful with scope: ",
                                 registration.scope
                             );
                         })
                         .catch(function (err) {
-                            console.log(\"ServiceWorker registration failed: \", err);
+                            console.log("ServiceWorker registration failed: ", err);
                         });
                 }
             );
         }
 
         document
-            .getElementById(\"agendar-retorno\")
-            .addEventListener(\"change\", function () {
-                const retornoFields = document.getElementById(\"retorno-fields\");
+            .getElementById("agendar-retorno")
+            .addEventListener("change", function () {
+                const retornoFields = document.getElementById("retorno-fields");
                 if (this.checked) {
-                    retornoFields.style.display = \"block\";
-                    document.getElementById(\"retorno-data\").setAttribute(\"required\", \"true\");
-                    document.getElementById(\"retorno-hora\").setAttribute(\"required\", \"true\");
+                    retornoFields.style.display = "block";
+                    document.getElementById("retorno-data").setAttribute("required", "true");
+                    document.getElementById("retorno-hora").setAttribute("required", "true");
                 } else {
-                    retornoFields.style.display = \"none\";
-                    document.getElementById(\"retorno-data\").removeAttribute(\"required\");
-                    document.getElementById(\"retorno-hora\").removeAttribute(\"required\");
+                    retornoFields.style.display = "none";
+                    document.getElementById("retorno-data").removeAttribute("required");
+                    document.getElementById("retorno-hora").removeAttribute("required");
                 }
             });
 
         document
-            .getElementById(\"formVisita\")
-            .addEventListener(\"submit\", function (e) {
+            .getElementById("formVisita")
+            .addEventListener("submit", function (e) {
                 e.preventDefault();
                 salvarVisita();
             });
     </script>
 </body>
 </html>
+
+

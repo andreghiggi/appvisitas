@@ -179,8 +179,11 @@
 
             if (userData) {
                 const user = JSON.parse(userData);
-                // Redireciona apenas se não estiver na página de login
-                if (window.location.pathname.endsWith('/login.html') || window.location.pathname.endsWith('/login.html/')) {
+                // Redireciona apenas se o usuário estiver na página de login e já logado
+                const currentPath = window.location.pathname;
+                const isLoginPage = currentPath.endsWith('/login.html') || currentPath.endsWith('/login.html/');
+
+                if (isLoginPage) {
                     if (user.perfil === 'administrador') {
                         window.location.href = 'admin/index.html';
                     } else {

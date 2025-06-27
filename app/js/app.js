@@ -34,7 +34,6 @@ function checkAuth() {
         document.getElementById('perfil-email').textContent = currentUser.email;
         loadDashboard();
     } else {
-        // Se não há dados de usuário, redireciona para o login
         window.location.href = '../login.html';
     }
 }
@@ -56,85 +55,37 @@ function setupNetworkListeners() {
 // Atualizar status online/offline
 function updateOnlineStatus() {
     const offlineIndicator = document.getElementById('offline-indicator');
-    if (isOnline) {
-        offlineIndicator.style.display = 'none';
-    } else {
-        offlineIndicator.style.display = 'block';
+    if (offlineIndicator) { // Verifica se o elemento existe
+        if (isOnline) {
+            offlineIndicator.style.display = 'none';
+        } else {
+            offlineIndicator.style.display = 'block';
+        }
     }
 }
 
 // Logout
 function logout() {
     if (confirm('Deseja realmente sair?')) {
-        // Sempre limpa o localStorage e sessionStorage ao fazer logout
-        localStorage.removeItem('userData');
-        sessionStorage.removeItem('userData');
-
         if (isOnline) {
             fetch(API_BASE + 'logout.php', {
                 method: 'POST'
             })
             .then(() => {
+                sessionStorage.removeItem('userData');
+                localStorage.removeItem('userData'); // Remove também do localStorage
                 window.location.href = '../login.html';
-            })
-            .catch(error => {
-                console.error('Erro ao fazer logout online:', error);
-                window.location.href = '../login.html'; // Redireciona mesmo com erro de rede
             });
         } else {
+            sessionStorage.removeItem('userData');
+            localStorage.removeItem('userData'); // Remove também do localStorage
             window.location.href = '../login.html';
         }
     }
 }
 
-// Função de login (a ser chamada do login.html)
-async function login(email, senha) {
-    if (!isOnline) {
-        // Tenta login offline
-        const storedUser = localStorage.getItem('userData');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            if (user.email === email && user.senha === senha) { // ATENÇÃO: Senha em texto puro, apenas para demonstração
-                sessionStorage.setItem('userData', JSON.stringify(user));
-                window.location.href = 'app/index.html';
-                return;
-            }
-        }
-        alert('Você está offline. Para o primeiro login ou para validar credenciais não salvas, é necessária uma conexão com a internet.');
-        return;
-    }
-
-    // Login online
-    try {
-        const response = await fetch(API_BASE + 'login.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email: email, senha: senha })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            sessionStorage.setItem('userData', JSON.stringify(data.user));
-            localStorage.setItem('userData', JSON.stringify(data.user)); // Salva para login offline
-            if (data.user.perfil === 'administrador') {
-                window.location.href = 'admin/index.html';
-            } else if (data.user.perfil === 'vendedor') {
-                window.location.href = 'app/index.html';
-            }
-        } else {
-            alert('Erro no login: ' + data.message);
-        }
-    } catch (error) {
-        console.error('Erro de conexão:', error);
-        alert('Erro de Conexão: ' + error.message + '. Verifique sua internet.');
-    }
-}
-
 // Mostrar seção
-function showSection(section) {
+function showSection(section, event) { // Adicionado 'event' como parâmetro
     // Esconder todas as seções
     document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
     
@@ -144,8 +95,10 @@ function showSection(section) {
     // Mostrar seção selecionada
     document.getElementById(section + '-section').style.display = 'block';
     
-    // Adicionar classe active ao link
-    event.target.closest('.nav-link').classList.add('active');
+    // Adicionar classe active ao link clicado
+    if (event && event.target) { // Verifica se o evento foi passado
+        event.target.closest('.nav-link').classList.add('active');
+    }
     
     // Atualizar título da página
     const titles = {
@@ -547,23 +500,28 @@ function showModalVisita() {
     document.getElementById('visita-data').value = agora.toISOString().split('T')[0];
     document.getElementById('visita-hora').value = agora.toTimeString().split(' ')[0].substring(0, 5);
     
+    // Esconder campos de retorno
+    document.getElementById('agendar-retorno').checked = false;
+    document.getElementById('retorno-fields').style.display = 'none';
+    document.getElementById('retorno-data').removeAttribute('required');
+    document.getElementById('retorno-hora').removeAttribute('required');
+
     modal.show();
 }
 
-// Criar visita a partir de retorno agendado
+// Criar visita/retorno
 function criarVisitaRetorno(clienteNome, retornoDataHora) {
     showModalVisita();
     document.getElementById('cliente-nome').value = clienteNome;
-    
     if (retornoDataHora) {
-        const data = new Date(retornoDataHora);
-        document.getElementById('visita-data').value = data.toISOString().split('T')[0];
-        document.getElementById('visita-hora').value = data.toTimeString().split(' ')[0].substring(0, 5);
+        const dataRetorno = new Date(retornoDataHora);
+        document.getElementById('visita-data').value = dataRetorno.toISOString().split('T')[0];
+        document.getElementById('visita-hora').value = dataRetorno.toTimeString().split(' ')[0].substring(0, 5);
     }
 }
 
 // Salvar visita
-async function salvarVisita() {
+function salvarVisita() {
     const clienteNome = document.getElementById('cliente-nome').value;
     const visitaData = document.getElementById('visita-data').value;
     const visitaHora = document.getElementById('visita-hora').value;
@@ -573,166 +531,109 @@ async function salvarVisita() {
     const retornoData = document.getElementById('retorno-data').value;
     const retornoHora = document.getElementById('retorno-hora').value;
 
-    if (!clienteNome || !visitaData || !visitaHora || !visitaSituacao) {
-        alert('Por favor, preencha todos os campos obrigatórios.');
-        return;
-    }
-
-    const visita = {
+    const novaVisita = {
         cliente_nome: clienteNome,
         data_hora: `${visitaData} ${visitaHora}:00`,
         situacao: visitaSituacao,
         observacoes: visitaObservacoes,
         retorno_data_hora: agendarRetorno ? `${retornoData} ${retornoHora}:00` : null,
-        id_usuario: currentUser.id,
         sync_status: 'pending' // Adiciona status de sincronização
     };
 
     // Salvar localmente (IndexedDB)
-    await saveOfflineData('visitas', visita);
-    await saveOfflineData('pendingSync', visita);
-
-    alert('Visita registrada com sucesso! Será sincronizada em breve.');
-    bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
-    loadDashboard();
-    updateSyncStatus();
-
-    // Tentar sincronizar imediatamente se online
-    if (isOnline) {
-        syncData();
-    }
+    saveOfflineData('visitas', novaVisita)
+        .then(() => {
+            alert('Visita salva localmente!');
+            bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
+            loadDashboard(); // Atualiza o dashboard
+            loadVisitas();   // Atualiza a lista de visitas
+            loadAgenda();    // Atualiza a agenda
+            updateSyncStatus(); // Atualiza o status de sincronização
+            
+            // Tenta sincronizar imediatamente se online
+            if (isOnline) {
+                syncData();
+            } else {
+                alert('Você está offline. A visita será sincronizada automaticamente quando a conexão for restabelecida.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao salvar visita localmente:', error);
+            alert('Erro ao salvar visita localmente. Tente novamente.');
+        });
 }
 
 // Sincronizar dados
-async function syncData() {
+function syncData() {
     if (!isOnline) {
-        console.log('Offline. Sincronização adiada.');
+        alert('Você está offline. Não é possível sincronizar agora.');
         return;
     }
 
     const syncIndicator = document.getElementById('sync-indicator');
-    syncIndicator.style.display = 'block';
-
-    let pendingData = await getOfflineData('pendingSync') || [];
-    console.log('Dados pendentes para sincronização:', pendingData);
-
-    if (pendingData.length === 0) {
-        console.log('Nenhum dado pendente para sincronização.');
-        syncIndicator.style.display = 'none';
-        localStorage.setItem('lastSync', new Date().toISOString());
-        updateSyncStatus();
-        return;
+    if (syncIndicator) {
+        syncIndicator.style.display = 'block';
     }
 
-    for (const data of pendingData) {
-        try {
-            const response = await fetch(API_BASE + 'sincronizar.php', {
+    getOfflineData('pendingSync')
+        .then(pendingData => {
+            if (!pendingData || pendingData.length === 0) {
+                console.log('Nenhum dado pendente para sincronizar.');
+                if (syncIndicator) {
+                    syncIndicator.style.display = 'none';
+                }
+                return Promise.resolve();
+            }
+
+            console.log(`Sincronizando ${pendingData.length} itens...`);
+            return fetch(API_BASE + 'sincronizar.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                console.log('Dados sincronizados com sucesso:', data);
-                // Remover da fila de pendentes
-                pendingData = pendingData.filter(item => item !== data);
-                await saveOfflineData('pendingSync', pendingData, true); // Sobrescrever a lista
-            } else {
-                console.error('Erro ao sincronizar dados:', result.message, data);
-            }
-        } catch (error) {
-            console.error('Erro de rede durante a sincronização:', error, data);
-            // Manter na fila para tentar novamente mais tarde
-        }
-    }
-
-    syncIndicator.style.display = 'none';
-    localStorage.setItem('lastSync', new Date().toISOString());
-    updateSyncStatus();
-    loadDashboard(); // Recarregar dados após sincronização
-    alert('Sincronização concluída!');
-}
-
-// Funções de utilidade para IndexedDB (do offline.js)
-async function openDatabase() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('VisitasDB', 1);
-
-        request.onupgradeneeded = function(event) {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('visitas')) {
-                db.createObjectStore('visitas', { keyPath: 'id', autoIncrement: true });
-            }
-            if (!db.objectStoreNames.contains('pendingSync')) {
-                db.createObjectStore('pendingSync', { keyPath: 'id', autoIncrement: true });
-            }
-        };
-
-        request.onsuccess = function(event) {
-            resolve(event.target.result);
-        };
-
-        request.onerror = function(event) {
-            reject('Erro ao abrir o banco de dados: ' + event.target.errorCode);
-        };
-    });
-}
-
-async function saveOfflineData(storeName, data, overwrite = false) {
-    const db = await openDatabase();
-    const transaction = db.transaction([storeName], 'readwrite');
-    const store = transaction.objectStore(storeName);
-
-    return new Promise((resolve, reject) => {
-        if (overwrite) {
-            store.clear().onsuccess = () => {
-                if (Array.isArray(data)) {
-                    let count = 0;
-                    if (data.length === 0) {
-                        resolve();
-                        return;
-                    }
-                    data.forEach(item => {
-                        store.add(item).onsuccess = () => {
-                            count++;
-                            if (count === data.length) {
-                                resolve();
-                            }
-                        };
-                    });
-                } else {
-                    store.add(data).onsuccess = () => resolve();
+                body: JSON.stringify({ data: pendingData })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor: ' + response.statusText);
                 }
-            };
-        } else {
-            store.add(data).onsuccess = () => resolve();
-        }
-
-        transaction.oncomplete = () => console.log(`${storeName} transaction complete.`);
-        transaction.onerror = (event) => reject(`Erro na transação ${storeName}: ` + event.target.errorCode);
-    });
-}
-
-async function getOfflineData(storeName) {
-    const db = await openDatabase();
-    const transaction = db.transaction([storeName], 'readonly');
-    const store = transaction.objectStore(storeName);
-
-    return new Promise((resolve, reject) => {
-        const request = store.getAll();
-
-        request.onsuccess = function() {
-            resolve(request.result);
-        };
-
-        request.onerror = function(event) {
-            reject('Erro ao obter dados: ' + event.target.errorCode);
-        };
-    });
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    console.log('Sincronização bem-sucedida:', result);
+                    // Limpar dados sincronizados do IndexedDB
+                    return clearOfflineData('pendingSync')
+                        .then(() => {
+                            localStorage.setItem('lastSync', new Date().toISOString());
+                            alert('Dados sincronizados com sucesso!');
+                            loadDashboard();
+                            loadVisitas();
+                            loadAgenda();
+                            updateSyncStatus();
+                        });
+                } else {
+                    console.error('Erro na sincronização:', result.message);
+                    alert('Erro na sincronização: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro durante a sincronização:', error);
+                alert('Erro durante a sincronização. Verifique sua conexão e tente novamente.');
+            })
+            .finally(() => {
+                if (syncIndicator) {
+                    syncIndicator.style.display = 'none';
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao obter dados pendentes para sincronização:', error);
+            alert('Erro ao preparar sincronização. Tente novamente.');
+            if (syncIndicator) {
+                syncIndicator.style.display = 'none';
+            }
+        });
 }
 
 // Funções de formatação
@@ -762,4 +663,5 @@ window.criarVisitaRetorno = criarVisitaRetorno;
 window.salvarVisita = salvarVisita;
 window.syncData = syncData;
 window.updateSyncStatus = updateSyncStatus;
-window.login = login; // Expondo a função de login
+
+
