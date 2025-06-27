@@ -29,7 +29,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            background: linear-gradient(135deg, var(--primary-color ) 0%, var(--secondary-color) 100%);
             color: white;
             padding: 1rem;
             position: sticky;
@@ -377,25 +377,25 @@
     <nav class="bottom-nav">
         <div class="d-flex">
             <div class="nav-item">
-                <a href="#" class="nav-link active" onclick="showSection(\'dashboard\')">
+                <a href="#" class="nav-link active" onclick="showSection(\'dashboard\', event)">
                     <i class="fas fa-home"></i>
                     <span>Início</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'visitas\')">
+                <a href="#" class="nav-link" onclick="showSection(\'visitas\', event)">
                     <i class="fas fa-calendar-check"></i>
                     <span>Visitas</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'agenda\')">
+                <a href="#" class="nav-link" onclick="showSection(\'agenda\', event)">
                     <i class="fas fa-calendar-alt"></i>
                     <span>Agenda</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'perfil\')">
+                <a href="#" class="nav-link" onclick="showSection(\'perfil\', event)">
                     <i class="fas fa-user"></i>
                     <span>Perfil</span>
                 </a>
@@ -482,55 +482,53 @@
     <script>
         // Registrar Service Worker
         if (
-            \'serviceWorker\'
+            \"serviceWorker\"
             in navigator
-        ) {
+         ) {
             window.addEventListener(
-                \'load\',
+                \"load\",
                 function () {
                     navigator.serviceWorker
                         .register(
-                            \'/sw.js\',
+                            \"/sw.js\",
                             {
-                                scope: \'/\'
+                                scope: \"/\"
                             }
                         )
                         .then(function (registration) {
                             console.log(
-                                \'ServiceWorker registration successful with scope: \',
+                                \"ServiceWorker registration successful with scope: \",
                                 registration.scope
                             );
                         })
                         .catch(function (err) {
-                            console.log(\'ServiceWorker registration failed: \', err);
+                            console.log(\"ServiceWorker registration failed: \", err);
                         });
                 }
             );
         }
 
         document
-            .getElementById(\'agendar-retorno\')
-            .addEventListener(\'change\', function () {
-                const retornoFields = document.getElementById(\'retorno-fields\');
+            .getElementById(\"agendar-retorno\")
+            .addEventListener(\"change\", function () {
+                const retornoFields = document.getElementById(\"retorno-fields\");
                 if (this.checked) {
-                    retornoFields.style.display = \'block\';
-                    document.getElementById(\'retorno-data\').setAttribute(\'required\', \'true\');
-                    document.getElementById(\'retorno-hora\').setAttribute(\'required\', \'true\');
+                    retornoFields.style.display = \"block\";
+                    document.getElementById(\"retorno-data\").setAttribute(\"required\", \"true\");
+                    document.getElementById(\"retorno-hora\").setAttribute(\"required\", \"true\");
                 } else {
-                    retornoFields.style.display = \'none\';
-                    document.getElementById(\'retorno-data\').removeAttribute(\'required\');
-                    document.getElementById(\'retorno-hora\').removeAttribute(\'required\');
+                    retornoFields.style.display = \"none\";
+                    document.getElementById(\"retorno-data\").removeAttribute(\"required\");
+                    document.getElementById(\"retorno-hora\").removeAttribute(\"required\");
                 }
             });
 
         document
-            .getElementById(\'formVisita\')
-            .addEventListener(\'submit\', function (e) {
+            .getElementById(\"formVisita\")
+            .addEventListener(\"submit\", function (e) {
                 e.preventDefault();
                 salvarVisita();
             });
     </script>
 </body>
 </html>
-
-
