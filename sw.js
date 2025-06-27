@@ -1,4 +1,4 @@
-const CACHE_NAME = 'visitas-app-v4'; // Versão do cache atualizada para forçar reinstalação
+const CACHE_NAME = 'visitas-app-v6'; // Versão do cache atualizada para forçar reinstalação
 const urlsToCache = [
     './login.html',
     './admin/index.html',

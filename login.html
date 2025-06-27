@@ -170,7 +170,7 @@
         }
         window.preencherCredenciais = preencherCredenciais; // Expor a função globalmente
 
-        // Verificar se já está logado (offline-first)
+        // Verificar se já está logado
         document.addEventListener('DOMContentLoaded', function() {
             let userData = sessionStorage.getItem('userData');
             if (!userData) {
