@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100% );
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -109,7 +109,7 @@
         const API_BASE = 'api/';
 
         // Registrar Service Worker
-        if ('serviceWorker' in navigator ) {
+        if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function(registration) {
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
@@ -179,9 +179,8 @@
 
             if (userData) {
                 const user = JSON.parse(userData);
-                // Não redireciona automaticamente se estiver offline e na página de login
-                // A lógica de login offline será tratada pela função login(email, senha)
-                if (navigator.onLine) { // Redireciona apenas se estiver online
+                // Redireciona apenas se não estiver na página de login
+                if (window.location.pathname.endsWith('/login.html') || window.location.pathname.endsWith('/login.html/')) {
                     if (user.perfil === 'administrador') {
                         window.location.href = 'admin/index.html';
                     } else {
@@ -193,3 +192,5 @@
     </script>
 </body>
 </html>
+
+
