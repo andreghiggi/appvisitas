@@ -34,7 +34,7 @@ function checkAuth() {
         loadDashboard();
     } else {
         // Se não há dados de usuário, redireciona para o login
-        window.location.href = '../login.html';
+        window.location.replace('../login.html'); // Usar replace para evitar histórico
     }
 }
 
@@ -69,7 +69,7 @@ function logout() {
     sessionStorage.removeItem('userData');
     localStorage.removeItem('userData');
     // Redireciona para a página de login e força um refresh para limpar o estado
-    window.location.href = '../login.html?logout=true'; 
+    window.location.replace('../login.html?logout=true'); 
 }
 
 // Mostrar seção
@@ -111,13 +111,13 @@ async function loadDashboard() {
         const response = await fetch(API_BASE + 'visitas.php?action=dashboard&id_vendedor=' + currentUser.id);
         const data = await response.json();
 
-        document.getElementById('total-visitas-hoje').textContent = data.totalVisitasHoje;
-        document.getElementById('total-retornos').textContent = data.totalRetornosAgendados;
+        document.getElementById('total-visitas-hoje').textContent = data.totalVisitasHoje || 0;
+        document.getElementById('total-retornos').textContent = data.totalRetornosAgendados || 0;
 
         // Próximos Retornos
         const proximosRetornosDiv = document.getElementById('proximos-retornos');
         proximosRetornosDiv.innerHTML = '';
-        if (data.proximosRetornos.length > 0) {
+        if (data.proximosRetornos && data.proximosRetornos.length > 0) {
             data.proximosRetornos.forEach(retorno => {
                 proximosRetornosDiv.innerHTML += `
                     <div class="card mb-2 retorno-card">
@@ -136,7 +136,7 @@ async function loadDashboard() {
         // Últimas Visitas
         const ultimasVisitasDiv = document.getElementById('ultimas-visitas');
         ultimasVisitasDiv.innerHTML = '';
-        if (data.ultimasVisitas.length > 0) {
+        if (data.ultimasVisitas && data.ultimasVisitas.length > 0) {
             data.ultimasVisitas.forEach(visita => {
                 ultimasVisitasDiv.innerHTML += `
                     <div class="card mb-2 visita-card">
@@ -259,8 +259,8 @@ async function loadPerfil() {
         const response = await fetch(API_BASE + 'visitas.php?action=stats&id_vendedor=' + currentUser.id);
         const data = await response.json();
 
-        document.getElementById('total-visitas-mes').textContent = data.totalVisitasMes;
-        document.getElementById('total-clientes').textContent = data.totalClientesAtendidos;
+        document.getElementById('total-visitas-mes').textContent = data.totalVisitasMes || 0;
+        document.getElementById('total-clientes').textContent = data.totalClientesAtendidos || 0;
 
         // Status de sincronização
         updateSyncStatus();
@@ -279,7 +279,7 @@ async function salvarVisita() {
     const visitaHora = document.getElementById('visita-hora').value;
     const visitaSituacao = document.getElementById('visita-situacao').value;
     const visitaObservacoes = document.getElementById('visita-observacoes').value;
-    const agendarRetorno = document.getElementById('agendar-retorno').checked;
+    const agendarRetorno = document.getElementById('retorno-necessario').checked; // Corrigido o ID
     const retornoData = document.getElementById('retorno-data').value;
     const retornoHora = document.getElementById('retorno-hora').value;
 
@@ -424,14 +424,29 @@ async function updateSyncStatus() {
 async function loadDashboardFromIndexedDB() {
     try {
         const db = await openDatabase();
-        const transaction = db.transaction('visitas', 'readonly');
-        const store = transaction.objectStore('visitas');
-        const allVisitas = await store.getAll();
+        const visitasOffline = await getAllVisitas(db);
 
-        // Implementar lógica para calcular dashboard a partir de allVisitas
-        // Por simplicidade, apenas mostra uma mensagem
-        document.getElementById('proximos-retornos').innerHTML = '<p class="text-muted text-center">Dados offline (dashboard limitado).</p>';
-        document.getElementById('ultimas-visitas').innerHTML = '<p class="text-muted text-center">Dados offline (dashboard limitado).</p>';
+        const hoje = new Date().toISOString().split('T')[0];
+        const totalVisitasHoje = visitasOffline.filter(v => v.data_visita.startsWith(hoje)).length;
+        const totalRetornosAgendados = visitasOffline.filter(v => v.data_retorno).length;
+
+        document.getElementById('total-visitas-hoje').textContent = totalVisitasHoje;
+        document.getElementById('total-retornos').textContent = totalRetornosAgendados;
+
+        const proximosRetornosDiv = document.getElementById('proximos-retornos');
+        const ultimasVisitasDiv = document.getElementById('ultimas-visitas');
+
+        const proximosRetornos = visitasOffline
+            .filter(v => v.data_retorno && new Date(v.data_retorno) >= new Date())
+            .sort((a, b) => new Date(a.data_retorno) - new Date(b.data_retorno))
+            .slice(0, 3);
+        displayRetornos(proximosRetornos, proximosRetornosDiv);
+
+        const ultimasVisitas = visitasOffline
+            .sort((a, b) => new Date(b.data_visita) - new Date(a.data_visita))
+            .slice(0, 5);
+        displayVisitas(ultimasVisitas, ultimasVisitasDiv);
+
     } catch (error) {
         console.error('Erro ao carregar dashboard do IndexedDB:', error);
     }
@@ -440,9 +455,8 @@ async function loadDashboardFromIndexedDB() {
 async function loadVisitasFromIndexedDB() {
     try {
         const db = await openDatabase();
-        const transaction = db.transaction('visitas', 'readonly');
-        const store = transaction.objectStore('visitas');
-        visitas = await store.getAll();
+        const visitasOffline = await getAllVisitas(db);
+        visitas = visitasOffline.sort((a, b) => new Date(b.data_visita) - new Date(a.data_visita));
         displayVisitas();
     } catch (error) {
         console.error('Erro ao carregar visitas do IndexedDB:', error);
@@ -452,9 +466,10 @@ async function loadVisitasFromIndexedDB() {
 async function loadAgendaFromIndexedDB() {
     try {
         const db = await openDatabase();
-        const transaction = db.transaction('visitas', 'readonly');
-        const store = transaction.objectStore('visitas');
-        retornos = (await store.getAll()).filter(v => v.data_retorno !== null);
+        const visitasOffline = await getAllVisitas(db);
+        retornos = visitasOffline
+            .filter(v => v.data_retorno && new Date(v.data_retorno) >= new Date())
+            .sort((a, b) => new Date(a.data_retorno) - new Date(b.data_retorno));
         displayAgenda();
     } catch (error) {
         console.error('Erro ao carregar agenda do IndexedDB:', error);
@@ -463,13 +478,19 @@ async function loadAgendaFromIndexedDB() {
 
 async function loadPerfilFromIndexedDB() {
     try {
-        // Dados do perfil já estão em currentUser (do localStorage)
-        document.getElementById('perfil-nome').textContent = currentUser.nome;
-        document.getElementById('perfil-email').textContent = currentUser.email;
+        const db = await openDatabase();
+        const visitasOffline = await getAllVisitas(db);
 
-        // Estatísticas offline (simplificado)
-        document.getElementById('total-visitas-mes').textContent = 'N/A';
-        document.getElementById('total-clientes').textContent = 'N/A';
+        const totalVisitasMes = visitasOffline.filter(v => {
+            const dataVisita = new Date(v.data_visita);
+            const hoje = new Date();
+            return dataVisita.getMonth() === hoje.getMonth() && dataVisita.getFullYear() === hoje.getFullYear();
+        }).length;
+
+        const totalClientesAtendidos = new Set(visitasOffline.map(v => v.cliente_nome)).size;
+
+        document.getElementById('total-visitas-mes').textContent = totalVisitasMes;
+        document.getElementById('total-clientes').textContent = totalClientesAtendidos;
 
         updateSyncStatus();
     } catch (error) {
@@ -477,33 +498,73 @@ async function loadPerfilFromIndexedDB() {
     }
 }
 
-// Funções de formatação
-function formatDateTime(dateTimeStr) {
-    if (!dateTimeStr) return '';
-    const date = new Date(dateTimeStr);
-    return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+async function getAllVisitas(db) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('visitas', 'readonly');
+        const store = transaction.objectStore('visitas');
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Funções utilitárias
+function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return '';
+    const date = new Date(dateTimeString);
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatSituacao(situacao) {
-    switch (situacao) {
-        case 'realizada': return 'Realizada';
-        case 'nao_atendeu': return 'Não Atendeu';
-        case 'remarcar': return 'Remarcar';
-        case 'cancelada': return 'Cancelada';
-        default: return situacao;
-    }
+    const situacoes = {
+        'realizada': 'Realizada',
+        'nao_atendeu': 'Não Atendeu',
+        'remarcar': 'Remarcar',
+        'cancelada': 'Cancelada'
+    };
+    return situacoes[situacao] || situacao;
 }
 
-// Expor funções globalmente para uso no HTML
-window.logout = logout;
+// Expor funções globalmente para o HTML
 window.showSection = showSection;
-window.showModalVisita = showModalVisita;
+window.logout = logout;
+window.syncData = syncData;
 window.filtrarVisitas = filtrarVisitas;
 window.filtrarAgenda = filtrarAgenda;
-window.criarVisitaRetorno = criarVisitaRetorno;
 window.salvarVisita = salvarVisita;
-window.syncData = syncData;
-window.updateSyncStatus = updateSyncStatus;
-window.login = login; // Expondo a função de login
+
+// Funções do Modal de Visita
+const modalVisita = new bootstrap.Modal(document.getElementById('modalVisita'));
+
+function showModalVisita() {
+    document.getElementById('formVisita').reset();
+    document.getElementById('retorno-fields').style.display = 'none';
+    document.getElementById('retorno-necessario').checked = false;
+    modalVisita.show();
+}
+window.showModalVisita = showModalVisita;
+
+function criarVisitaRetorno(clienteNome, retornoDataHora) {
+    showModalVisita();
+    document.getElementById('cliente-nome').value = clienteNome;
+    document.getElementById('visita-data').value = retornoDataHora.split(' ')[0];
+    document.getElementById('visita-hora').value = retornoDataHora.split(' ')[1].substring(0, 5);
+    document.getElementById('visita-situacao').value = 'realizada'; // Sugere como realizada
+}
+window.criarVisitaRetorno = criarVisitaRetorno;
+
+document.getElementById('retorno-necessario').addEventListener('change', function() {
+    const retornoFields = document.getElementById('retorno-fields');
+    if (this.checked) {
+        retornoFields.style.display = 'block';
+    } else {
+        retornoFields.style.display = 'none';
+    }
+});
+
+document.getElementById('formVisita').addEventListener('submit', function(e) {
+    e.preventDefault();
+    salvarVisita();
+});
 
 
