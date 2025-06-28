@@ -170,7 +170,7 @@
         }
         window.preencherCredenciais = preencherCredenciais; // Expor a função globalmente
 
-        // Verificar se já está logado
+        // Verificar se já está logado ao carregar a página de login
         document.addEventListener('DOMContentLoaded', function() {
             let userData = sessionStorage.getItem('userData');
             if (!userData) {
@@ -180,6 +180,7 @@
             if (userData) {
                 const user = JSON.parse(userData);
                 // Redireciona apenas se o usuário estiver na página de login e já logado
+                // E se o perfil corresponder ao destino
                 const currentPath = window.location.pathname;
                 const isLoginPage = currentPath.endsWith('/login.html') || currentPath.endsWith('/login.html/');
 

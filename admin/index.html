@@ -70,25 +70,25 @@
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                            <a class="nav-link active" href="#" onclick="window.showSection(\'dashboard\')">
                                 <i class="fas fa-tachometer-alt me-2"></i>
                                 Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showSection('vendedores')">
+                            <a class="nav-link" href="#" onclick="window.showSection(\'vendedores\')">
                                 <i class="fas fa-users me-2"></i>
                                 Vendedores
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showSection('visitas')">
+                            <a class="nav-link" href="#" onclick="window.showSection(\'visitas\')">
                                 <i class="fas fa-calendar-check me-2"></i>
                                 Visitas
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="logout()">
+                            <a class="nav-link" href="#" onclick="window.logout()">
                                 <i class="fas fa-sign-out-alt me-2"></i>
                                 Sair
                             </a>
@@ -183,7 +183,7 @@
                 <div id="vendedores-section" class="section" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3>Gerenciar Vendedores</h3>
-                        <button class="btn btn-primary" onclick="showModalVendedor()">
+                        <button class="btn btn-primary" onclick="window.showModalVendedor()">
                             <i class="fas fa-plus me-2"></i>Novo Vendedor
                         </button>
                     </div>
@@ -214,7 +214,7 @@
                 <div id="visitas-section" class="section" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3>Gerenciar Visitas</h3>
-                        <button class="btn btn-primary" onclick="showModalVisita()">
+                        <button class="btn btn-primary" onclick="window.showModalVisita()">
                             <i class="fas fa-plus me-2"></i>Nova Visita
                         </button>
                     </div>
@@ -224,21 +224,21 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <label for="filtro-vendedor" class="form-label">Vendedor</label>
-                                    <select class="form-select" id="filtro-vendedor" onchange="filtrarVisitas()">
+                                    <select class="form-select" id="filtro-vendedor" onchange="window.filtrarVisitas()">
                                         <option value="">Todos</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="filtro-data-inicio" class="form-label">Data Início</label>
-                                    <input type="date" class="form-control" id="filtro-data-inicio" onchange="filtrarVisitas()">
+                                    <input type="date" class="form-control" id="filtro-data-inicio" onchange="window.filtrarVisitas()">
                                 </div>
                                 <div class="col-md-3">
                                     <label for="filtro-data-fim" class="form-label">Data Fim</label>
-                                    <input type="date" class="form-control" id="filtro-data-fim" onchange="filtrarVisitas()">
+                                    <input type="date" class="form-control" id="filtro-data-fim" onchange="window.filtrarVisitas()">
                                 </div>
                                 <div class="col-md-3">
                                     <label for="filtro-situacao" class="form-label">Situação</label>
-                                    <select class="form-select" id="filtro-situacao" onchange="filtrarVisitas()">
+                                    <select class="form-select" id="filtro-situacao" onchange="window.filtrarVisitas()">
                                         <option value="">Todas</option>
                                         <option value="realizada">Realizada</option>
                                         <option value="nao_atendeu">Não Atendeu</option>
@@ -306,7 +306,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarVendedor()">Salvar</button>
+                    <button type="button" class="btn btn-primary" onclick="window.salvarVendedor()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -328,14 +328,14 @@
                                 <div class="mb-3">
                                     <label for="visita-vendedor" class="form-label">Vendedor</label>
                                     <select class="form-select" id="visita-vendedor" required>
-                                        <option value="">Selecione um vendedor</option>
+                                        <!-- Options will be loaded dynamically -->
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-cliente" class="form-label">Cliente</label>
-                                    <input type="text" class="form-control" id="visita-cliente" required>
+                                    <label for="visita-cliente-nome" class="form-label">Nome do Cliente</label>
+                                    <input type="text" class="form-control" id="visita-cliente-nome" required>
                                 </div>
                             </div>
                         </div>
@@ -367,17 +367,27 @@
                             <label for="visita-observacoes" class="form-label">Observações</label>
                             <textarea class="form-control" id="visita-observacoes" rows="3"></textarea>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="visita-retorno-data" class="form-label">Data de Retorno</label>
-                                    <input type="date" class="form-control" id="visita-retorno-data">
-                                </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="visita-retorno-necessario">
+                                <label class="form-check-label" for="visita-retorno-necessario">
+                                    Agendar Retorno
+                                </label>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="visita-retorno-hora" class="form-label">Hora de Retorno</label>
-                                    <input type="time" class="form-control" id="visita-retorno-hora">
+                        </div>
+                        <div id="visita-retorno-fields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="visita-retorno-data" class="form-label">Data Retorno</label>
+                                        <input type="date" class="form-control" id="visita-retorno-data">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="visita-retorno-hora" class="form-label">Hora Retorno</label>
+                                        <input type="time" class="form-control" id="visita-retorno-hora">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -385,7 +395,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarVisita()">Salvar</button>
+                    <button type="button" class="btn btn-primary" onclick="window.salvarVisita()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -395,4 +405,5 @@
     <script src="js/admin.js"></script>
 </body>
 </html>
+
 
