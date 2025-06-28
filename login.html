@@ -177,10 +177,12 @@
                 userData = localStorage.getItem('userData');
             }
 
-            if (userData) {
+            // Adiciona uma verificação para o parâmetro 'logout=true' na URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const isLogout = urlParams.get('logout') === 'true';
+
+            if (userData && !isLogout) {
                 const user = JSON.parse(userData);
-                // Redireciona apenas se o usuário estiver na página de login e já logado
-                // E se o perfil corresponder ao destino
                 const currentPath = window.location.pathname;
                 const isLoginPage = currentPath.endsWith('/login.html') || currentPath.endsWith('/login.html/');
 
@@ -191,6 +193,9 @@
                         window.location.replace('app/index.html');
                     }
                 }
+            } else if (isLogout) {
+                // Se 'logout=true' está presente, remove o parâmetro e limpa o histórico
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
     </script>
