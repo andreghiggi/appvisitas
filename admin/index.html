@@ -70,19 +70,19 @@
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link active" href="#" onclick="window.showSection(\'dashboard\')">
+                            <a class="nav-link active" href="#" onclick="window.showSection(\'dashboard\', event)">
                                 <i class="fas fa-tachometer-alt me-2"></i>
                                 Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="window.showSection(\'vendedores\')">
+                            <a class="nav-link" href="#" onclick="window.showSection(\'vendedores\', event)">
                                 <i class="fas fa-users me-2"></i>
                                 Vendedores
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="window.showSection(\'visitas\')">
+                            <a class="nav-link" href="#" onclick="window.showSection(\'visitas\', event)">
                                 <i class="fas fa-calendar-check me-2"></i>
                                 Visitas
                             </a>
@@ -328,7 +328,7 @@
                                 <div class="mb-3">
                                     <label for="visita-vendedor" class="form-label">Vendedor</label>
                                     <select class="form-select" id="visita-vendedor" required>
-                                        <!-- Options will be loaded dynamically -->
+                                        <option value="">Selecione um vendedor</option>
                                     </select>
                                 </div>
                             </div>
@@ -342,13 +342,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-data" class="form-label">Data</label>
+                                    <label for="visita-data" class="form-label">Data da Visita</label>
                                     <input type="date" class="form-control" id="visita-data" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-hora" class="form-label">Hora</label>
+                                    <label for="visita-hora" class="form-label">Hora da Visita</label>
                                     <input type="time" class="form-control" id="visita-hora" required>
                                 </div>
                             </div>
@@ -356,7 +356,6 @@
                         <div class="mb-3">
                             <label for="visita-situacao" class="form-label">Situação</label>
                             <select class="form-select" id="visita-situacao" required>
-                                <option value="">Selecione a situação</option>
                                 <option value="realizada">Realizada</option>
                                 <option value="nao_atendeu">Não Atendeu</option>
                                 <option value="remarcar">Remarcar</option>
@@ -371,7 +370,7 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="visita-retorno-necessario">
                                 <label class="form-check-label" for="visita-retorno-necessario">
-                                    Agendar Retorno
+                                    Exige Retorno
                                 </label>
                             </div>
                         </div>

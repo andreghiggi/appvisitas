@@ -29,7 +29,7 @@ function checkAuth() {
             return;
         }
         document.getElementById('user-info').textContent = currentUser.nome;
-        loadDashboard();
+        showSection('dashboard'); // Chama showSection para inicializar a dashboard
     } else {
         // Se não há dados de usuário, redireciona para o login
         window.location.replace('../login.html'); 
@@ -452,7 +452,6 @@ function salvarVisita() {
             alert(result.message);
             bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
             loadVisitas();
-            loadDashboard(); // Recarrega o dashboard para atualizar as estatísticas
         }
     })
     .catch(error => {
@@ -480,7 +479,6 @@ function excluirVisita(id) {
         .then(result => {
             alert(result.message);
             loadVisitas();
-            loadDashboard(); // Recarrega o dashboard para atualizar as estatísticas
         })
         .catch(error => {
             alert('Erro ao excluir visita: ' + error.message);
@@ -489,22 +487,15 @@ function excluirVisita(id) {
     }
 }
 
-// Funções utilitárias
+// Funções de formatação e utilitários
 function formatDateTime(dateTimeString) {
-    if (!dateTimeString) return '';
-    const date = new Date(dateTimeString);
-    const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-    return date.toLocaleDateString('pt-BR', options);
+    const [date, time] = dateTimeString.split(' ');
+    const [year, month, day] = date.split('-');
+    return `${day}/${month}/${year} ${time || ''}`.trim();
 }
 
 function formatSituacao(situacao) {
-    switch (situacao) {
-        case 'realizada': return 'Realizada';
-        case 'nao_atendeu': return 'Não Atendeu';
-        case 'remarcar': return 'Remarcar';
-        case 'cancelada': return 'Cancelada';
-        default: return situacao;
-    }
+    return situacao.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function getSituacaoColor(situacao) {
@@ -517,9 +508,9 @@ function getSituacaoColor(situacao) {
     }
 }
 
-// Expor funções globalmente
-window.showSection = showSection;
+// Expor funções ao objeto window para serem acessíveis no HTML
 window.logout = logout;
+window.showSection = showSection;
 window.showModalVendedor = showModalVendedor;
 window.salvarVendedor = salvarVendedor;
 window.editarVendedor = editarVendedor;
@@ -529,21 +520,5 @@ window.salvarVisita = salvarVisita;
 window.editarVisita = editarVisita;
 window.excluirVisita = excluirVisita;
 window.filtrarVisitas = filtrarVisitas;
-
-// Event listener para o checkbox de retorno no modal de visita
-document.addEventListener('DOMContentLoaded', function() {
-    const retornoNecessarioCheckbox = document.getElementById('visita-retorno-necessario');
-    const retornoFieldsDiv = document.getElementById('visita-retorno-fields');
-
-    if (retornoNecessarioCheckbox && retornoFieldsDiv) {
-        retornoNecessarioCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                retornoFieldsDiv.style.display = 'block';
-            } else {
-                retornoFieldsDiv.style.display = 'none';
-            }
-        });
-    }
-});
 
 
