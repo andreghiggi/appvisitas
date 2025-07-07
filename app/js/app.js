@@ -6,612 +6,504 @@ let currentUser = null;
 let visitas = [];
 let retornos = [];
 let isOnline = navigator.onLine;
-let myModal;
 
-// Funções de Autenticação
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuth();
+    setupNetworkListeners();
+    updateOnlineStatus();
+});
+
+// Verificar autenticação
 function checkAuth() {
-    let userData = sessionStorage.getItem('userData') || localStorage.getItem('userData');
+    let userData = sessionStorage.getItem('userData');
+    if (!userData) {
+        userData = localStorage.getItem('userData');
+    }
 
     if (userData) {
         currentUser = JSON.parse(userData);
-        if (currentUser.perfil === 'vendedor') {
-            // Se o usuário é um vendedor, inicializa o app
-            initializeApp();
-        } else {
-            // Se for admin, redireciona para o painel de admin
-            alert('Acesso incorreto. Redirecionando para o painel de administrador.');
-            window.location.replace('../admin/index.html');
+        if (currentUser.perfil !== 'vendedor') {
+            alert('Acesso negado. Esta área é exclusiva para vendedores.');
+            logout(); // Força logout se o perfil não for vendedor
+            return;
         }
+        document.getElementById('user-info').textContent = currentUser.nome;
+        document.getElementById('perfil-nome').textContent = currentUser.nome;
+        document.getElementById('perfil-email').textContent = currentUser.email;
+        loadDashboard();
     } else {
         // Se não há dados de usuário, redireciona para o login
-        window.location.replace('../login.html');
+        window.location.href = '../login.html';
     }
 }
 
-// Inicialização do App (só é chamada se o usuário for um vendedor autenticado)
-function initializeApp() {
-    document.getElementById('user-info').textContent = currentUser.nome;
-    document.getElementById('perfil-nome').textContent = currentUser.nome;
-    document.getElementById('perfil-email').textContent = currentUser.email;
-
-    setupEventListeners();
-    updateOnlineStatus();
-    showSection('dashboard'); // Mostra a seção inicial
-}
-
-// Configurar listeners de eventos
-function setupEventListeners() {
-    window.addEventListener('online', () => {
+// Configurar listeners de rede
+function setupNetworkListeners() {
+    window.addEventListener('online', function() {
         isOnline = true;
         updateOnlineStatus();
         syncData();
     });
 
-    window.addEventListener('offline', () => {
+    window.addEventListener('offline', function() {
         isOnline = false;
         updateOnlineStatus();
-    });
-
-    // Modal
-    const modalElement = document.getElementById('modalVisita');
-    if (modalElement) {
-        myModal = new bootstrap.Modal(modalElement);
-    }
-
-    // Formulário de visita
-    const formVisita = document.getElementById('formVisita');
-    if (formVisita) {
-        formVisita.addEventListener('submit', (e) => {
-            e.preventDefault();
-            salvarVisita();
-        });
-    }
-
-    // Checkbox de retorno
-    const chkRetorno = document.getElementById('visita-retorno-necessario');
-    if (chkRetorno) {
-        chkRetorno.addEventListener('change', (e) => {
-            document.getElementById('retorno-fields').style.display = e.target.checked ? 'block' : 'none';
-        });
-    }
-
-    // Event listeners para os links de navegação
-    document.querySelectorAll('.bottom-nav .nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const sectionId = link.getAttribute('data-section'); // Usar data-section
-            showSection(sectionId);
-        });
     });
 }
 
 // Atualizar status online/offline
 function updateOnlineStatus() {
     const indicator = document.getElementById('offline-indicator');
-    if (indicator) {
-        indicator.style.display = isOnline ? 'none' : 'block';
+    if (indicator) { // Verifica se o elemento existe
+        if (isOnline) {
+            indicator.style.display = 'none';
+        } else {
+            indicator.style.display = 'block';
+        }
     }
 }
 
 // Logout
 function logout() {
-    sessionStorage.clear();
-    localStorage.clear();
-    window.location.replace('../login.html?logout=true');
+    sessionStorage.removeItem('userData');
+    localStorage.removeItem('userData');
+    // Redireciona para a página de login e força um refresh para limpar o estado
+    window.location.href = '../login.html?logout=true'; 
 }
 
 // Mostrar seção
-function showSection(sectionId) {
-    document.querySelectorAll('.bottom-nav .nav-link').forEach(link => link.classList.remove('active'));
-    document.querySelector(`.bottom-nav .nav-link[data-section="${sectionId}"]`).classList.add('active');
+function showSection(sectionId, event) {
+    // Remove a classe 'active' de todos os links de navegação
+    document.querySelectorAll('.bottom-nav .nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
 
-    document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
-    document.getElementById(`${sectionId}-section`).style.display = 'block';
+    // Adiciona a classe 'active' ao link clicado
+    if (event && event.target) {
+        event.target.closest('.nav-link').classList.add('active');
+    }
+
+    // Esconde todas as seções
+    document.querySelectorAll('.section').forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Mostra a seção desejada
+    document.getElementById(sectionId + '-section').style.display = 'block';
     document.getElementById('page-title').textContent = sectionId.charAt(0).toUpperCase() + sectionId.slice(1);
 
-    switch (sectionId) {
-        case 'dashboard': loadDashboard(); break;
-        case 'visitas': loadVisitas(); break;
-        case 'agenda': loadAgenda(); break;
-        case 'perfil': loadPerfil(); break;
+    // Carrega dados específicos da seção
+    if (sectionId === 'dashboard') {
+        loadDashboard();
+    } else if (sectionId === 'visitas') {
+        loadVisitas();
+    } else if (sectionId === 'agenda') {
+        loadAgenda();
+    } else if (sectionId === 'perfil') {
+        loadPerfil();
     }
 }
 
 // Carregar Dashboard
 async function loadDashboard() {
-    document.getElementById('total-visitas-hoje').textContent = '0';
-    document.getElementById('total-retornos').textContent = '0';
-    document.getElementById('proximos-retornos').innerHTML = '<p class="text-muted text-center">Carregando...</p>';
-    document.getElementById('ultimas-visitas').innerHTML = '<p class="text-muted text-center">Carregando...</p>';
-
     try {
-        const response = await fetch(`${API_BASE}visitas.php?vendedor_id=${currentUser.id}`);
+        const response = await fetch(API_BASE + 'visitas.php?action=dashboard&id_vendedor=' + currentUser.id);
         const data = await response.json();
 
-        if (data.success) {
-            const hoje = new Date().toISOString().split('T')[0];
-            const visitasHoje = data.visitas.filter(v => v.data_hora.startsWith(hoje));
-            document.getElementById('total-visitas-hoje').textContent = visitasHoje.length;
+        document.getElementById('total-visitas-hoje').textContent = data.totalVisitasHoje;
+        document.getElementById('total-retornos').textContent = data.totalRetornosAgendados;
 
-            const retornosAgendados = data.visitas.filter(v => v.retorno_data_hora && new Date(v.retorno_data_hora) >= new Date());
-            document.getElementById('total-retornos').textContent = retornosAgendados.length;
-
-            // Renderizar próximos retornos
-            if (retornosAgendados.length > 0) {
-                document.getElementById('proximos-retornos').innerHTML = retornosAgendados.map(visita => `
+        // Próximos Retornos
+        const proximosRetornosDiv = document.getElementById('proximos-retornos');
+        proximosRetornosDiv.innerHTML = '';
+        if (data.proximosRetornos.length > 0) {
+            data.proximosRetornos.forEach(retorno => {
+                proximosRetornosDiv.innerHTML += `
                     <div class="card mb-2 retorno-card">
                         <div class="card-body">
-                            <h6 class="card-title">${visita.cliente_nome}</h6>
-                            <p class="card-text"><i class="far fa-calendar-alt me-2"></i>${formatDateTime(visita.retorno_data_hora)}</p>
-                            <p class="card-text">Situação: <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span></p>
+                            <h6 class="card-title mb-1">${retorno.cliente_nome}</h6>
+                            <p class="card-text mb-1"><i class="fas fa-calendar-alt me-1"></i> ${formatDateTime(retorno.data_retorno)}</p>
+                            <p class="card-text mb-0"><i class="fas fa-info-circle me-1"></i> ${retorno.observacoes || 'Sem observações'}</p>
                         </div>
                     </div>
-                `).join('');
-            } else {
-                document.getElementById('proximos-retornos').innerHTML = '<p class="text-muted text-center">Nenhum retorno agendado.</p>';
-            }
+                `;
+            });
+        } else {
+            proximosRetornosDiv.innerHTML = '<p class="text-muted text-center">Nenhum retorno agendado.</p>';
+        }
 
-            // Renderizar últimas visitas
-            const ultimasVisitas = data.visitas.sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora)).slice(0, 5);
-            if (ultimasVisitas.length > 0) {
-                document.getElementById('ultimas-visitas').innerHTML = ultimasVisitas.map(visita => `
+        // Últimas Visitas
+        const ultimasVisitasDiv = document.getElementById('ultimas-visitas');
+        ultimasVisitasDiv.innerHTML = '';
+        if (data.ultimasVisitas.length > 0) {
+            data.ultimasVisitas.forEach(visita => {
+                ultimasVisitasDiv.innerHTML += `
                     <div class="card mb-2 visita-card">
                         <div class="card-body">
-                            <h6 class="card-title">${visita.cliente_nome}</h6>
-                            <p class="card-text"><i class="far fa-calendar-alt me-2"></i>${formatDateTime(visita.data_hora)}</p>
-                            <p class="card-text">Situação: <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span></p>
+                            <h6 class="card-title mb-1">${visita.cliente_nome}</h6>
+                            <p class="card-text mb-1"><i class="fas fa-calendar-check me-1"></i> ${formatDateTime(visita.data_visita)}</p>
+                            <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span>
                         </div>
                     </div>
-                `).join('');
-            } else {
-                document.getElementById('ultimas-visitas').innerHTML = '<p class="text-muted text-center">Nenhuma visita registrada.</p>';
-            }
-
+                `;
+            });
         } else {
-            console.error('Erro ao carregar dashboard:', data.message);
-            document.getElementById('proximos-retornos').innerHTML = `<p class="text-danger text-center">${data.message}</p>`;
-            document.getElementById('ultimas-visitas').innerHTML = `<p class="text-danger text-center">${data.message}</p>`;
+            ultimasVisitasDiv.innerHTML = '<p class="text-muted text-center">Nenhuma visita registrada.</p>';
         }
+
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
-        document.getElementById('proximos-retornos').innerHTML = '<p class="text-danger text-center">Erro ao carregar dashboard. Verifique sua conexão.</p>';
-        document.getElementById('ultimas-visitas').innerHTML = '<p class="text-danger text-center">Erro ao carregar dashboard. Verifique sua conexão.</p>';
+        // Em caso de erro de rede, tenta carregar do IndexedDB
+        loadDashboardFromIndexedDB();
     }
 }
 
 // Carregar Visitas
 async function loadVisitas() {
-    const listaVisitas = document.getElementById('lista-visitas-vendedor');
-    listaVisitas.innerHTML = '<p class="text-muted text-center">Carregando...</p>';
-
-    const filtroData = document.getElementById('filtro-data').value;
-    let url = `${API_BASE}visitas.php?vendedor_id=${currentUser.id}`;
-    if (filtroData) {
-        url += `&data_inicio=${filtroData}&data_fim=${filtroData}`;
-    }
-
     try {
+        const filtroData = document.getElementById('filtro-data').value;
+        let url = API_BASE + 'visitas.php?action=list&id_vendedor=' + currentUser.id;
+        if (filtroData) {
+            url += '&data=' + filtroData;
+        }
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.success) {
-            visitas = data.visitas;
-            renderVisitas(visitas);
-        } else {
-            listaVisitas.innerHTML = `<p class="text-danger text-center">${data.message}</p>`;
-        }
+        visitas = data.visitas || [];
+        displayVisitas();
     } catch (error) {
         console.error('Erro ao carregar visitas:', error);
-        listaVisitas.innerHTML = '<p class="text-danger text-center">Erro ao carregar visitas. Verifique sua conexão.</p>';
+        // Em caso de erro de rede, tenta carregar do IndexedDB
+        loadVisitasFromIndexedDB();
     }
 }
 
-function renderVisitas(visitasToRender) {
-    const listaVisitas = document.getElementById('lista-visitas-vendedor');
-    if (visitasToRender.length === 0) {
-        listaVisitas.innerHTML = '<p class="text-muted text-center">Nenhuma visita encontrada para o filtro atual.</p>';
-        return;
+function displayVisitas() {
+    const listaVisitasDiv = document.getElementById('lista-visitas-vendedor');
+    listaVisitasDiv.innerHTML = '';
+    if (visitas.length > 0) {
+        visitas.forEach(visita => {
+            listaVisitasDiv.innerHTML += `
+                <div class="card mb-2 visita-card">
+                    <div class="card-body">
+                        <h6 class="card-title mb-1">${visita.cliente_nome}</h6>
+                        <p class="card-text mb-1"><i class="fas fa-calendar-check me-1"></i> ${formatDateTime(visita.data_visita)}</p>
+                        <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span>
+                        <p class="card-text mb-0"><i class="fas fa-comment-dots me-1"></i> ${visita.observacoes || 'Sem observações'}</p>
+                        ${visita.data_retorno ? `<p class="card-text mb-0 text-warning"><i class="fas fa-redo me-1"></i> Retorno: ${formatDateTime(visita.data_retorno)}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        listaVisitasDiv.innerHTML = '<p class="text-muted text-center">Nenhuma visita encontrada.</p>';
     }
+}
 
-    listaVisitas.innerHTML = visitasToRender.map(visita => `
-        <div class="card mb-3 visita-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <h6 class="card-title">${visita.cliente_nome}</h6>
-                    <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span>
-                </div>
-                <p class="card-text"><i class="far fa-calendar-alt me-2"></i>${formatDateTime(visita.data_hora)}</p>
-                <p class="card-text"><strong>Observações:</strong> ${visita.observacoes || 'N/A'}</p>
-                ${visita.retorno_data_hora ? `<p class="card-text text-warning"><strong>Retorno:</strong> ${formatDateTime(visita.retorno_data_hora)}</p>` : ''}
-                <div class="d-flex justify-content-end mt-2">
-                    <button class="btn btn-sm btn-outline-primary me-2" onclick="window.editarVisita(${visita.id})">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="window.excluirVisita(${visita.id})">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+function filtrarVisitas() {
+    loadVisitas();
 }
 
 // Carregar Agenda
 async function loadAgenda() {
-    const listaAgenda = document.getElementById('lista-agenda');
-    listaAgenda.innerHTML = '<p class="text-muted text-center">Carregando...</p>';
-
-    const filtroAgenda = document.getElementById('filtro-agenda').value;
-    let url = `${API_BASE}visitas.php?vendedor_id=${currentUser.id}&retorno_necessario=true`;
-    if (filtroAgenda) {
-        url += `&data_retorno=${filtroAgenda}`;
-    }
-
     try {
+        const filtroData = document.getElementById('filtro-agenda').value;
+        let url = API_BASE + 'visitas.php?action=retornos&id_vendedor=' + currentUser.id;
+        if (filtroData) {
+            url += '&data=' + filtroData;
+        }
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.success) {
-            retornos = data.visitas.filter(v => v.retorno_data_hora);
-            renderAgenda(retornos);
-        } else {
-            listaAgenda.innerHTML = `<p class="text-danger text-center">${data.message}</p>`;
-        }
+        retornos = data.retornos || [];
+        displayAgenda();
     } catch (error) {
         console.error('Erro ao carregar agenda:', error);
-        listaAgenda.innerHTML = '<p class="text-danger text-center">Erro ao carregar agenda. Verifique sua conexão.</p>';
+        // Em caso de erro de rede, tenta carregar do IndexedDB
+        loadAgendaFromIndexedDB();
     }
 }
 
-function renderAgenda(retornosToRender) {
-    const listaAgenda = document.getElementById('lista-agenda');
-    if (retornosToRender.length === 0) {
-        listaAgenda.innerHTML = '<p class="text-muted text-center">Nenhum retorno agendado para o filtro atual.</p>';
-        return;
+function displayAgenda() {
+    const listaAgendaDiv = document.getElementById('lista-agenda');
+    listaAgendaDiv.innerHTML = '';
+    if (retornos.length > 0) {
+        retornos.forEach(retorno => {
+            listaAgendaDiv.innerHTML += `
+                <div class="card mb-2 retorno-card">
+                    <div class="card-body">
+                        <h6 class="card-title mb-1">${retorno.cliente_nome}</h6>
+                        <p class="card-text mb-1"><i class="fas fa-calendar-alt me-1"></i> ${formatDateTime(retorno.data_retorno)}</p>
+                        <p class="card-text mb-0"><i class="fas fa-info-circle me-1"></i> ${retorno.observacoes || 'Sem observações'}</p>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        listaAgendaDiv.innerHTML = '<p class="text-muted text-center">Nenhum retorno agendado.</p>';
     }
+}
 
-    listaAgenda.innerHTML = retornosToRender.map(visita => `
-        <div class="card mb-3 retorno-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <h6 class="card-title">${visita.cliente_nome}</h6>
-                    <span class="status-badge status-${visita.situacao}">${formatSituacao(visita.situacao)}</span>
-                </div>
-                <p class="card-text"><i class="far fa-calendar-alt me-2"></i>${formatDateTime(visita.retorno_data_hora)}</p>
-                <p class="card-text"><strong>Observações:</strong> ${visita.observacoes || 'N/A'}</p>
-                <div class="d-flex justify-content-end mt-2">
-                    <button class="btn btn-sm btn-outline-primary me-2" onclick="window.editarVisita(${visita.id})">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="window.excluirVisita(${visita.id})">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+function filtrarAgenda() {
+    loadAgenda();
 }
 
 // Carregar Perfil
 async function loadPerfil() {
-    document.getElementById('total-visitas-mes').textContent = '0';
-    document.getElementById('total-clientes').textContent = '0';
-    document.getElementById('dados-pendentes').textContent = '0';
-    document.getElementById('ultima-sync').textContent = 'Nunca';
-
     try {
-        const response = await fetch(`${API_BASE}visitas.php?vendedor_id=${currentUser.id}`);
+        // Dados do perfil já estão em currentUser
+        document.getElementById('perfil-nome').textContent = currentUser.nome;
+        document.getElementById('perfil-email').textContent = currentUser.email;
+
+        const response = await fetch(API_BASE + 'visitas.php?action=stats&id_vendedor=' + currentUser.id);
         const data = await response.json();
 
-        if (data.success) {
-            const visitasMes = data.visitas.filter(v => {
-                const dataVisita = new Date(v.data_hora);
-                const hoje = new Date();
-                return dataVisita.getMonth() === hoje.getMonth() && dataVisita.getFullYear() === hoje.getFullYear();
-            });
-            document.getElementById('total-visitas-mes').textContent = visitasMes.length;
+        document.getElementById('total-visitas-mes').textContent = data.totalVisitasMes;
+        document.getElementById('total-clientes').textContent = data.totalClientesAtendidos;
 
-            const clientesAtendidos = new Set(data.visitas.map(v => v.cliente_nome)).size;
-            document.getElementById('total-clientes').textContent = clientesAtendidos;
-        }
+        // Status de sincronização
+        updateSyncStatus();
+
     } catch (error) {
         console.error('Erro ao carregar perfil:', error);
-    }
-
-    // Carregar dados pendentes do IndexedDB
-    const request = indexedDB.open('VisitasDB', 1);
-    request.onsuccess = function(event) {
-        const db = event.target.result;
-        const transaction = db.transaction(['pendingSync'], 'readonly');
-        const store = transaction.objectStore('pendingSync');
-        store.count().onsuccess = function(event) {
-            document.getElementById('dados-pendentes').textContent = event.target.result;
-        };
-    };
-    request.onerror = function(event) {
-        console.error('Erro ao abrir IndexedDB para perfil:', event.target.errorCode);
-    };
-
-    // Última sincronização (simulado, pois não há um registro real)
-    const lastSync = localStorage.getItem('lastSync');
-    if (lastSync) {
-        document.getElementById('ultima-sync').textContent = new Date(lastSync).toLocaleString();
+        // Em caso de erro de rede, tenta carregar do IndexedDB
+        loadPerfilFromIndexedDB();
     }
 }
 
-// Salvar Visita
+// Salvar Visita (nova ou edição)
 async function salvarVisita() {
     const clienteNome = document.getElementById('cliente-nome').value;
     const visitaData = document.getElementById('visita-data').value;
     const visitaHora = document.getElementById('visita-hora').value;
     const visitaSituacao = document.getElementById('visita-situacao').value;
     const visitaObservacoes = document.getElementById('visita-observacoes').value;
-    const retornoNecessario = document.getElementById('visita-retorno-necessario').checked;
+    const agendarRetorno = document.getElementById('agendar-retorno').checked;
     const retornoData = document.getElementById('retorno-data').value;
     const retornoHora = document.getElementById('retorno-hora').value;
 
-    if (!clienteNome || !visitaData || !visitaHora || !visitaSituacao) {
-        alert('Por favor, preencha todos os campos obrigatórios.');
-        return;
-    }
-
-    let dataToSave = {
+    const visita = {
+        id_vendedor: currentUser.id,
         cliente_nome: clienteNome,
-        data_hora: `${visitaData} ${visitaHora}:00`,
+        data_visita: `${visitaData} ${visitaHora}`,
         situacao: visitaSituacao,
         observacoes: visitaObservacoes,
-        id_vendedor: currentUser.id
+        data_retorno: agendarRetorno ? `${retornoData} ${retornoHora}` : null
     };
-
-    if (retornoNecessario) {
-        if (!retornoData || !retornoHora) {
-            alert('Por favor, preencha a data e hora do retorno.');
-            return;
-        }
-        dataToSave.retorno_data_hora = `${retornoData} ${retornoHora}:00`;
-    }
 
     try {
         if (isOnline) {
-            const response = await fetch(`${API_BASE}visitas.php`, {
+            const response = await fetch(API_BASE + 'visitas.php?action=add', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(dataToSave)
+                body: JSON.stringify(visita)
             });
-            const result = await response.json();
-            if (result.success) {
+            const data = await response.json();
+            if (data.success) {
                 alert('Visita salva com sucesso!');
-                myModal.hide();
-                loadVisitas();
+                // Limpa o formulário e recarrega os dados
+                document.getElementById('formVisita').reset();
+                bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
                 loadDashboard();
+                loadVisitas();
                 loadAgenda();
-                loadPerfil();
             } else {
-                alert('Erro ao salvar visita: ' + result.message);
+                alert('Erro ao salvar visita online: ' + data.message);
+                // Se falhar online, tenta salvar offline
+                saveVisitaOffline(visita);
             }
         } else {
-            // Salvar no IndexedDB para sincronização futura
-            const request = indexedDB.open('VisitasDB', 1);
-            request.onsuccess = function(event) {
-                const db = event.target.result;
-                const transaction = db.transaction(['pendingSync'], 'readwrite');
-                const store = transaction.objectStore('pendingSync');
-                store.add(dataToSave);
-                transaction.oncomplete = function() {
-                    alert('Visita salva offline e será sincronizada quando a conexão for restabelecida.');
-                    myModal.hide();
-                    loadVisitas();
-                    loadDashboard();
-                    loadAgenda();
-                    loadPerfil();
-                };
-                transaction.onerror = function(error) {
-                    console.error('Erro ao salvar no IndexedDB:', error);
-                    alert('Erro ao salvar visita offline.');
-                };
-            };
-            request.onerror = function(event) {
-                console.error('Erro ao abrir IndexedDB:', event.target.errorCode);
-                alert('Erro ao salvar visita offline.');
-            };
+            // Salva offline se não houver conexão
+            saveVisitaOffline(visita);
         }
     } catch (error) {
-        console.error('Erro ao salvar visita:', error);
-        alert('Erro ao salvar visita. Verifique sua conexão.');
+        console.error('Erro de rede ao salvar visita:', error);
+        // Salva offline em caso de erro de rede
+        saveVisitaOffline(visita);
     }
 }
 
-// Editar Visita
-async function editarVisita(id) {
-    const visita = visitas.find(v => v.id == id);
-    if (visita) {
-        document.getElementById('cliente-nome').value = visita.cliente_nome;
-        document.getElementById('visita-data').value = visita.data_hora.split(' ')[0];
-        document.getElementById('visita-hora').value = visita.data_hora.split(' ')[1].substring(0, 5);
-        document.getElementById('visita-situacao').value = visita.situacao;
-        document.getElementById('visita-observacoes').value = visita.observacoes;
+// Salvar Visita Offline (IndexedDB)
+async function saveVisitaOffline(visita) {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('pendingSync', 'readwrite');
+        const store = transaction.objectStore('pendingSync');
+        await store.add(visita);
+        alert('Visita salva offline. Será sincronizada quando a conexão for restabelecida.');
+        document.getElementById('formVisita').reset();
+        bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
+        updateSyncStatus();
+    } catch (error) {
+        console.error('Erro ao salvar visita no IndexedDB:', error);
+        alert('Erro ao salvar visita offline. Tente novamente.');
+    }
+}
 
-        const chkRetorno = document.getElementById('visita-retorno-necessario');
-        const retornoFields = document.getElementById('retorno-fields');
+// Sincronizar dados pendentes
+async function syncData() {
+    if (!isOnline) {
+        alert('Você está offline. A sincronização ocorrerá automaticamente quando a conexão for restabelecida.');
+        return;
+    }
 
-        if (visita.retorno_data_hora) {
-            chkRetorno.checked = true;
-            retornoFields.style.display = 'block';
-            document.getElementById('retorno-data').value = visita.retorno_data_hora.split(' ')[0];
-            document.getElementById('retorno-hora').value = visita.retorno_data_hora.split(' ')[1].substring(0, 5);
-        } else {
-            chkRetorno.checked = false;
-            retornoFields.style.display = 'none';
-            document.getElementById('retorno-data').value = '';
-            document.getElementById('retorno-hora').value = '';
+    const syncIndicator = document.getElementById('sync-indicator');
+    if (syncIndicator) syncIndicator.style.display = 'block';
+
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('pendingSync', 'readwrite');
+        const store = transaction.objectStore('pendingSync');
+        const pendingItems = await store.getAll();
+
+        if (pendingItems.length === 0) {
+            alert('Nenhum dado pendente para sincronizar.');
+            if (syncIndicator) syncIndicator.style.display = 'none';
+            updateSyncStatus();
+            return;
         }
-        myModal.show();
-    }
-}
 
-// Excluir Visita
-async function excluirVisita(id) {
-    if (confirm('Deseja realmente excluir esta visita?')) {
-        try {
-            if (isOnline) {
-                const response = await fetch(`${API_BASE}visitas.php`, {
-                    method: 'DELETE',
+        for (const item of pendingItems) {
+            try {
+                const response = await fetch(API_BASE + 'visitas.php?action=add', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ id: id })
+                    body: JSON.stringify(item)
                 });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Visita excluída com sucesso!');
-                    loadVisitas();
-                    loadDashboard();
-                    loadAgenda();
-                    loadPerfil();
+                const data = await response.json();
+                if (data.success) {
+                    // Remove o item do IndexedDB após a sincronização bem-sucedida
+                    await store.delete(item.id || item.cliente_nome); // Assumindo que id ou cliente_nome é único
                 } else {
-                    alert('Erro ao excluir visita: ' + result.message);
+                    console.error('Erro ao sincronizar item:', item, data.message);
                 }
-            } else {
-                alert('Não é possível excluir visitas offline. Sincronize os dados primeiro.');
+            } catch (itemError) {
+                console.error('Erro de rede ao sincronizar item:', item, itemError);
             }
-        } catch (error) {
-            console.error('Erro ao excluir visita:', error);
-            alert('Erro ao excluir visita. Verifique sua conexão.');
         }
+        alert('Sincronização concluída!');
+        loadDashboard();
+        loadVisitas();
+        loadAgenda();
+        loadPerfil();
+    } catch (error) {
+        console.error('Erro durante a sincronização:', error);
+        alert('Erro durante a sincronização. Verifique o console para detalhes.');
+    } finally {
+        if (syncIndicator) syncIndicator.style.display = 'none';
+        updateSyncStatus();
     }
 }
 
-// Sincronizar Dados
-async function syncData() {
-    const syncIndicator = document.getElementById('sync-indicator');
-    syncIndicator.style.display = 'block';
-
-    const request = indexedDB.open('VisitasDB', 1);
-    request.onsuccess = function(event) {
-        const db = event.target.result;
-        const transaction = db.transaction(['pendingSync'], 'readwrite');
+// Atualizar status de sincronização
+async function updateSyncStatus() {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('pendingSync', 'readonly');
         const store = transaction.objectStore('pendingSync');
-        store.getAll().onsuccess = async function(event) {
-            const pendingData = event.target.result;
-            if (pendingData.length === 0) {
-                console.log('Nenhum dado pendente para sincronização.');
-                syncIndicator.style.display = 'none';
-                localStorage.setItem('lastSync', new Date().toISOString());
-                loadPerfil();
-                return;
-            }
+        const count = await store.count();
+        document.getElementById('dados-pendentes').textContent = count;
 
-            for (const data of pendingData) {
-                try {
-                    const response = await fetch(`${API_BASE}visitas.php`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        console.log('Dado sincronizado com sucesso:', data);
-                        // Remover do IndexedDB após sucesso
-                        const deleteRequest = store.delete(data.id);
-                        deleteRequest.onsuccess = () => console.log('Dado removido do IndexedDB:', data);
-                        deleteRequest.onerror = (e) => console.error('Erro ao remover do IndexedDB:', e);
-                    } else {
-                        console.error('Erro ao sincronizar dado:', result.message, data);
-                    }
-                } catch (error) {
-                    console.error('Erro de rede durante a sincronização:', error, data);
-                    // Se houver erro de rede, para a sincronização e tenta novamente depois
-                    alert('Erro de conexão durante a sincronização. Tentando novamente mais tarde.');
-                    break;
-                }
-            }
-            syncIndicator.style.display = 'none';
-            localStorage.setItem('lastSync', new Date().toISOString());
-            loadVisitas();
-            loadDashboard();
-            loadAgenda();
-            loadPerfil();
-        };
-    };
-    request.onerror = function(event) {
-        console.error('Erro ao abrir IndexedDB para sincronização:', event.target.errorCode);
-        syncIndicator.style.display = 'none';
-    };
+        const lastSync = localStorage.getItem('lastSync');
+        if (lastSync) {
+            document.getElementById('ultima-sync').textContent = formatDateTime(lastSync);
+        } else {
+            document.getElementById('ultima-sync').textContent = 'Nunca';
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar status de sincronização:', error);
+    }
 }
 
-// Funções de formatação e utilitários
-function formatDateTime(dateTimeString) {
-    const [date, time] = dateTimeString.split(' ');
-    const [year, month, day] = date.split('-');
-    return `${day}/${month}/${year} ${time || ''}`.trim();
+// Funções para carregar dados do IndexedDB em modo offline
+async function loadDashboardFromIndexedDB() {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('visitas', 'readonly');
+        const store = transaction.objectStore('visitas');
+        const allVisitas = await store.getAll();
+
+        // Implementar lógica para calcular dashboard a partir de allVisitas
+        // Por simplicidade, apenas mostra uma mensagem
+        document.getElementById('proximos-retornos').innerHTML = '<p class="text-muted text-center">Dados offline (dashboard limitado).</p>';
+        document.getElementById('ultimas-visitas').innerHTML = '<p class="text-muted text-center">Dados offline (dashboard limitado).</p>';
+    } catch (error) {
+        console.error('Erro ao carregar dashboard do IndexedDB:', error);
+    }
+}
+
+async function loadVisitasFromIndexedDB() {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('visitas', 'readonly');
+        const store = transaction.objectStore('visitas');
+        visitas = await store.getAll();
+        displayVisitas();
+    } catch (error) {
+        console.error('Erro ao carregar visitas do IndexedDB:', error);
+    }
+}
+
+async function loadAgendaFromIndexedDB() {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction('visitas', 'readonly');
+        const store = transaction.objectStore('visitas');
+        retornos = (await store.getAll()).filter(v => v.data_retorno !== null);
+        displayAgenda();
+    } catch (error) {
+        console.error('Erro ao carregar agenda do IndexedDB:', error);
+    }
+}
+
+async function loadPerfilFromIndexedDB() {
+    try {
+        // Dados do perfil já estão em currentUser (do localStorage)
+        document.getElementById('perfil-nome').textContent = currentUser.nome;
+        document.getElementById('perfil-email').textContent = currentUser.email;
+
+        // Estatísticas offline (simplificado)
+        document.getElementById('total-visitas-mes').textContent = 'N/A';
+        document.getElementById('total-clientes').textContent = 'N/A';
+
+        updateSyncStatus();
+    } catch (error) {
+        console.error('Erro ao carregar perfil do IndexedDB:', error);
+    }
+}
+
+// Funções de formatação
+function formatDateTime(dateTimeStr) {
+    if (!dateTimeStr) return '';
+    const date = new Date(dateTimeStr);
+    return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function formatSituacao(situacao) {
-    return situacao.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-function getSituacaoColor(situacao) {
     switch (situacao) {
-        case 'realizada': return 'success';
-        case 'nao_atendeu': return 'warning';
-        case 'remarcar': return 'info';
-        case 'cancelada': return 'danger';
-        default: return 'secondary';
+        case 'realizada': return 'Realizada';
+        case 'nao_atendeu': return 'Não Atendeu';
+        case 'remarcar': return 'Remarcar';
+        case 'cancelada': return 'Cancelada';
+        default: return situacao;
     }
 }
 
-// Mostrar Modal de Visita
-function showModalVisita(id = null) {
-    if (myModal) {
-        document.getElementById('formVisita').reset();
-        document.getElementById('retorno-fields').style.display = 'none';
-        document.getElementById('visita-retorno-necessario').checked = false;
-
-        if (id) {
-            const visita = visitas.find(v => v.id == id);
-            if (visita) {
-                document.getElementById('cliente-nome').value = visita.cliente_nome;
-                document.getElementById('visita-data').value = visita.data_hora.split(' ')[0];
-                document.getElementById('visita-hora').value = visita.data_hora.split(' ')[1].substring(0, 5);
-                document.getElementById('visita-situacao').value = visita.situacao;
-                document.getElementById('visita-observacoes').value = visita.observacoes;
-
-                const chkRetorno = document.getElementById('visita-retorno-necessario');
-                const retornoFields = document.getElementById('retorno-fields');
-
-                if (visita.retorno_data_hora) {
-                    chkRetorno.checked = true;
-                    retornoFields.style.display = 'block';
-                    document.getElementById('retorno-data').value = visita.retorno_data_hora.split(' ')[0];
-                    document.getElementById('retorno-hora').value = visita.retorno_data_hora.split(' ')[1].substring(0, 5);
-                } else {
-                    chkRetorno.checked = false;
-                    retornoFields.style.display = 'none';
-                    document.getElementById('retorno-data').value = '';
-                    document.getElementById('retorno-hora').value = '';
-                }
-            }
-        }
-        myModal.show();
-    }
-}
-
-// Expor funções ao objeto window para serem acessíveis no HTML
+// Expor funções globalmente para uso no HTML
 window.logout = logout;
 window.showSection = showSection;
 window.showModalVisita = showModalVisita;
+window.filtrarVisitas = filtrarVisitas;
+window.filtrarAgenda = filtrarAgenda;
+window.criarVisitaRetorno = criarVisitaRetorno;
 window.salvarVisita = salvarVisita;
-window.editarVisita = editarVisita;
-window.excluirVisita = excluirVisita;
 window.syncData = syncData;
-window.filtrarVisitas = loadVisitas;
-window.filtrarAgenda = loadAgenda;
-
-// Ponto de entrada principal
-document.addEventListener('DOMContentLoaded', checkAuth);
+window.updateSyncStatus = updateSyncStatus;
+window.login = login; // Expondo a função de login
 
 

@@ -13,26 +13,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Verificar autenticação
 function checkAuth() {
-    let userData = sessionStorage.getItem('userData');
-    if (!userData) {
-        userData = localStorage.getItem('userData');
-    }
-
+    // Simular verificação de sessão
+    const userData = sessionStorage.getItem('userData');
     if (userData) {
         currentUser = JSON.parse(userData);
         if (currentUser.perfil !== 'administrador') {
             alert('Acesso negado. Apenas administradores podem acessar este painel.');
-            // Redireciona para o login e limpa os dados de sessão
-            sessionStorage.removeItem('userData');
-            localStorage.removeItem('userData');
-            window.location.replace('../login.html?logout=true'); 
+            window.location.href = '../login.html';
             return;
         }
         document.getElementById('user-info').textContent = currentUser.nome;
-        showSection('dashboard'); // Chama showSection para inicializar a dashboard
+        loadDashboard();
     } else {
-        // Se não há dados de usuário, redireciona para o login
-        window.location.replace('../login.html'); 
+        window.location.href = '../login.html';
     }
 }
 
@@ -44,33 +37,26 @@ function logout() {
         })
         .then(() => {
             sessionStorage.removeItem('userData');
-            localStorage.removeItem('userData'); 
-            window.location.replace('../login.html?logout=true'); 
-        })
-        .catch(error => {
-            console.error('Erro ao fazer logout:', error);
-            sessionStorage.removeItem('userData'); 
-            localStorage.removeItem('userData');
-            window.location.replace('../login.html?logout=true');
+            window.location.href = '../login.html';
         });
     }
 }
 
 // Mostrar seção
-function showSection(section, event) {
-    if (event) event.preventDefault(); 
-
+function showSection(section) {
+    // Esconder todas as seções
     document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
     
+    // Remover classe active de todos os links
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     
-    const targetLink = document.querySelector(`.sidebar .nav-link[onclick*="${section}"]`);
-    if (targetLink) {
-        targetLink.classList.add('active');
-    }
-    
+    // Mostrar seção selecionada
     document.getElementById(section + '-section').style.display = 'block';
     
+    // Adicionar classe active ao link
+    event.target.classList.add('active');
+    
+    // Atualizar título da página
     const titles = {
         'dashboard': 'Dashboard',
         'vendedores': 'Gerenciar Vendedores',
@@ -78,6 +64,7 @@ function showSection(section, event) {
     };
     document.getElementById('page-title').textContent = titles[section];
     
+    // Carregar dados da seção
     switch(section) {
         case 'dashboard':
             loadDashboard();
@@ -100,14 +87,15 @@ function loadDashboard() {
 
 // Carregar estatísticas
 function loadStats() {
+    // Carregar total de vendedores
     fetch(API_BASE + 'usuarios.php')
     .then(response => response.json())
     .then(data => {
         const vendedores = data.filter(u => u.perfil === 'vendedor');
         document.getElementById('total-vendedores').textContent = vendedores.length;
-    })
-    .catch(error => console.error('Erro ao carregar total de vendedores:', error));
+    });
     
+    // Carregar visitas de hoje
     const hoje = new Date().toISOString().split('T')[0];
     fetch(API_BASE + 'visitas.php?data_inicio=' + hoje + '&data_fim=' + hoje)
     .then(response => response.json())
@@ -119,8 +107,7 @@ function loadStats() {
         
         document.getElementById('visitas-realizadas').textContent = realizadas;
         document.getElementById('visitas-pendentes').textContent = pendentes;
-    })
-    .catch(error => console.error('Erro ao carregar visitas de hoje:', error));
+    });
 }
 
 // Carregar últimas visitas
@@ -131,22 +118,17 @@ function loadUltimasVisitas() {
         const tbody = document.getElementById('ultimas-visitas');
         tbody.innerHTML = '';
         
-        if (data.length > 0) {
-            data.slice(0, 10).forEach(visita => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${visita.vendedor_nome}</td>
-                    <td>${visita.cliente_nome}</td>
-                    <td>${formatDateTime(visita.data_hora)}</td>
-                    <td><span class="badge bg-${getSituacaoColor(visita.situacao)}">${formatSituacao(visita.situacao)}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma visita encontrada.</td></tr>';
-        }
-    })
-    .catch(error => console.error('Erro ao carregar últimas visitas:', error));
+        data.slice(0, 10).forEach(visita => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${visita.vendedor_nome}</td>
+                <td>${visita.cliente_nome}</td>
+                <td>${formatDateTime(visita.data_hora)}</td>
+                <td><span class="badge bg-${getSituacaoColor(visita.situacao)}">${formatSituacao(visita.situacao)}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
 }
 
 // Carregar vendedores
@@ -158,28 +140,23 @@ function loadVendedores() {
         const tbody = document.getElementById('lista-vendedores');
         tbody.innerHTML = '';
         
-        if (vendedores.length > 0) {
-            vendedores.forEach(vendedor => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${vendedor.nome}</td>
-                    <td>${vendedor.email}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="window.editarVendedor(${vendedor.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="window.excluirVendedor(${vendedor.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center">Nenhum vendedor encontrado.</td></tr>';
-        }
-    })
-    .catch(error => console.error('Erro ao carregar vendedores:', error));
+        vendedores.forEach(vendedor => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${vendedor.nome}</td>
+                <td>${vendedor.email}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="editarVendedor(${vendedor.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="excluirVendedor(${vendedor.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
 }
 
 // Carregar vendedores para select
@@ -189,23 +166,19 @@ function loadVendedoresSelect() {
     .then(data => {
         const vendedores = data.filter(u => u.perfil === 'vendedor');
         
+        // Atualizar select do filtro
         const filtroSelect = document.getElementById('filtro-vendedor');
-        if (filtroSelect) {
-            filtroSelect.innerHTML = '<option value="">Todos</option>';
-            vendedores.forEach(vendedor => {
-                filtroSelect.innerHTML += `<option value="${vendedor.id}">${vendedor.nome}</option>`;
-            });
-        }
+        filtroSelect.innerHTML = '<option value="">Todos</option>';
         
+        // Atualizar select do modal
         const modalSelect = document.getElementById('visita-vendedor');
-        if (modalSelect) {
-            modalSelect.innerHTML = '<option value="">Selecione um vendedor</option>';
-            vendedores.forEach(vendedor => {
-                modalSelect.innerHTML += `<option value="${vendedor.id}">${vendedor.nome}</option>`;
-            });
-        }
-    })
-    .catch(error => console.error('Erro ao carregar vendedores para select:', error));
+        modalSelect.innerHTML = '<option value="">Selecione um vendedor</option>';
+        
+        vendedores.forEach(vendedor => {
+            filtroSelect.innerHTML += `<option value="${vendedor.id}">${vendedor.nome}</option>`;
+            modalSelect.innerHTML += `<option value="${vendedor.id}">${vendedor.nome}</option>`;
+        });
+    });
 }
 
 // Carregar visitas
@@ -231,6 +204,7 @@ function loadVisitas() {
     .then(data => {
         visitas = data;
         
+        // Filtrar por situação se necessário
         if (situacao) {
             visitas = visitas.filter(v => v.situacao === situacao);
         }
@@ -238,31 +212,26 @@ function loadVisitas() {
         const tbody = document.getElementById('lista-visitas');
         tbody.innerHTML = '';
         
-        if (visitas.length > 0) {
-            visitas.forEach(visita => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${visita.vendedor_nome}</td>
-                    <td>${visita.cliente_nome}</td>
-                    <td>${formatDateTime(visita.data_hora)}</td>
-                    <td><span class="badge bg-${getSituacaoColor(visita.situacao)}">${formatSituacao(visita.situacao)}</span></td>
-                    <td>${visita.retorno_data_hora ? formatDateTime(visita.retorno_data_hora) : '-'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="window.editarVisita(${visita.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="window.excluirVisita(${visita.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma visita encontrada.</td></tr>';
-        }
-    })
-    .catch(error => console.error('Erro ao carregar visitas:', error));
+        visitas.forEach(visita => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${visita.vendedor_nome}</td>
+                <td>${visita.cliente_nome}</td>
+                <td>${formatDateTime(visita.data_hora)}</td>
+                <td><span class="badge bg-${getSituacaoColor(visita.situacao)}">${formatSituacao(visita.situacao)}</span></td>
+                <td>${visita.retorno_data_hora ? formatDateTime(visita.retorno_data_hora) : '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="editarVisita(${visita.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="excluirVisita(${visita.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
 }
 
 // Filtrar visitas
@@ -295,6 +264,7 @@ function showModalVendedor(id = null) {
 // Salvar vendedor
 function salvarVendedor() {
     const form = document.getElementById('formVendedor');
+    const formData = new FormData(form);
     
     const data = {
         nome: document.getElementById('vendedor-nome').value,
@@ -329,7 +299,6 @@ function salvarVendedor() {
     })
     .catch(error => {
         alert('Erro ao salvar vendedor: ' + error.message);
-        console.error('Erro ao salvar vendedor:', error);
     });
 }
 
@@ -352,10 +321,6 @@ function excluirVendedor(id) {
         .then(result => {
             alert(result.message);
             loadVendedores();
-        })
-        .catch(error => {
-            alert('Erro ao excluir vendedor: ' + error.message);
-            console.error('Erro ao excluir vendedor:', error);
         });
     }
 }
@@ -369,14 +334,12 @@ function showModalVisita(id = null) {
     document.getElementById('visita-id').value = '';
     document.getElementById('modalVisitaTitle').textContent = 'Nova Visita';
     
-    loadVendedoresSelect();
-
     if (id) {
         const visita = visitas.find(v => v.id == id);
         if (visita) {
             document.getElementById('visita-id').value = visita.id;
             document.getElementById('visita-vendedor').value = visita.id_vendedor;
-            document.getElementById('visita-cliente-nome').value = visita.cliente_nome; 
+            document.getElementById('visita-cliente').value = visita.cliente_nome;
             
             const dataHora = new Date(visita.data_hora);
             document.getElementById('visita-data').value = dataHora.toISOString().split('T')[0];
@@ -385,18 +348,10 @@ function showModalVisita(id = null) {
             document.getElementById('visita-situacao').value = visita.situacao;
             document.getElementById('visita-observacoes').value = visita.observacoes;
             
-            const retornoNecessarioCheckbox = document.getElementById('visita-retorno-necessario');
-            const retornoFieldsDiv = document.getElementById('visita-retorno-fields');
-
             if (visita.retorno_data_hora) {
-                retornoNecessarioCheckbox.checked = true;
-                retornoFieldsDiv.style.display = 'block';
                 const retornoDataHora = new Date(visita.retorno_data_hora);
                 document.getElementById('visita-retorno-data').value = retornoDataHora.toISOString().split('T')[0];
                 document.getElementById('visita-retorno-hora').value = retornoDataHora.toTimeString().split(' ')[0].substring(0, 5);
-            } else {
-                retornoNecessarioCheckbox.checked = false;
-                retornoFieldsDiv.style.display = 'none';
             }
             
             document.getElementById('modalVisitaTitle').textContent = 'Editar Visita';
@@ -409,25 +364,18 @@ function showModalVisita(id = null) {
 // Salvar visita
 function salvarVisita() {
     const data = {
-        cliente_nome: document.getElementById('visita-cliente-nome').value, 
+        cliente_nome: document.getElementById('visita-cliente').value,
         data_hora: document.getElementById('visita-data').value + ' ' + document.getElementById('visita-hora').value + ':00',
         situacao: document.getElementById('visita-situacao').value,
         observacoes: document.getElementById('visita-observacoes').value,
         id_vendedor: document.getElementById('visita-vendedor').value
     };
     
-    const retornoNecessario = document.getElementById('visita-retorno-necessario').checked;
-    if (retornoNecessario) {
-        const retornoData = document.getElementById('visita-retorno-data').value;
-        const retornoHora = document.getElementById('visita-retorno-hora').value;
-        if (retornoData && retornoHora) {
-            data.retorno_data_hora = retornoData + ' ' + retornoHora + ':00';
-        } else {
-            alert('Por favor, preencha a data e hora do retorno.');
-            return;
-        }
-    } else {
-        data.retorno_data_hora = null;
+    const retornoData = document.getElementById('visita-retorno-data').value;
+    const retornoHora = document.getElementById('visita-retorno-hora').value;
+    
+    if (retornoData && retornoHora) {
+        data.retorno_data_hora = retornoData + ' ' + retornoHora + ':00';
     }
     
     const id = document.getElementById('visita-id').value;
@@ -452,11 +400,11 @@ function salvarVisita() {
             alert(result.message);
             bootstrap.Modal.getInstance(document.getElementById('modalVisita')).hide();
             loadVisitas();
+            loadDashboard();
         }
     })
     .catch(error => {
         alert('Erro ao salvar visita: ' + error.message);
-        console.error('Erro ao salvar visita:', error);
     });
 }
 
@@ -479,46 +427,34 @@ function excluirVisita(id) {
         .then(result => {
             alert(result.message);
             loadVisitas();
-        })
-        .catch(error => {
-            alert('Erro ao excluir visita: ' + error.message);
-            console.error('Erro ao excluir visita:', error);
+            loadDashboard();
         });
     }
 }
 
-// Funções de formatação e utilitários
-function formatDateTime(dateTimeString) {
-    const [date, time] = dateTimeString.split(' ');
-    const [year, month, day] = date.split('-');
-    return `${day}/${month}/${year} ${time || ''}`.trim();
+// Funções utilitárias
+function formatDateTime(dateTime) {
+    const date = new Date(dateTime);
+    return date.toLocaleString('pt-BR');
 }
 
 function formatSituacao(situacao) {
-    return situacao.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const situacoes = {
+        'realizada': 'Realizada',
+        'nao_atendeu': 'Não Atendeu',
+        'remarcar': 'Remarcar',
+        'cancelada': 'Cancelada'
+    };
+    return situacoes[situacao] || situacao;
 }
 
 function getSituacaoColor(situacao) {
-    switch (situacao) {
-        case 'realizada': return 'success';
-        case 'nao_atendeu': return 'warning';
-        case 'remarcar': return 'info';
-        case 'cancelada': return 'danger';
-        default: return 'secondary';
-    }
+    const cores = {
+        'realizada': 'success',
+        'nao_atendeu': 'warning',
+        'remarcar': 'info',
+        'cancelada': 'danger'
+    };
+    return cores[situacao] || 'secondary';
 }
-
-// Expor funções ao objeto window para serem acessíveis no HTML
-window.logout = logout;
-window.showSection = showSection;
-window.showModalVendedor = showModalVendedor;
-window.salvarVendedor = salvarVendedor;
-window.editarVendedor = editarVendedor;
-window.excluirVendedor = excluirVendedor;
-window.showModalVisita = showModalVisita;
-window.salvarVisita = salvarVisita;
-window.editarVisita = editarVisita;
-window.excluirVisita = excluirVisita;
-window.filtrarVisitas = filtrarVisitas;
-
 
