@@ -325,9 +325,10 @@ function salvarVendedor() {
     .then(result => {
         if (result.message) {
             alert(result.message);
-            bootstrap.Modal.getInstance(document.getElementById('modalVendedor')).hide();
-            loadVendedores();
-        }
+            bootstrap.Modal.getInstance(document.getElementById(\'modalVendedor\')).hide();
+            loadVendedores(); // Recarrega a lista de vendedores
+            loadVendedoresSelect(); // Recarrega o select de vendedores para visitas
+      }
     })
     .catch(error => {
         alert('Erro ao salvar vendedor: ' + error.message);
