@@ -70,25 +70,21 @@
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link active" href="#" onclick="showSection('dashboard')">
+                            <a class="nav-link active" href="#" data-section="dashboard" onclick="showSection('dashboard')">
                                 <i class="fas fa-tachometer-alt me-2"></i>
                                 Dashboard
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showSection('vendedores')">
-                                <i class="fas fa-users me-2"></i>
+                        <li class="nav-item                            <a class="nav-link" href="#" data-section="vendedores" onclick="showSection(\'vendedores\')">                                <i class="fas fa-users me-2"></i>
                                 Vendedores
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showSection('visitas')">
-                                <i class="fas fa-calendar-check me-2"></i>
+                        <li class="nav-item"                            <a class="nav-link" href="#" data-section="visitas" onclick="showSection(\'visitas\')">                               <i class="fas fa-calendar-check me-2"></i>
                                 Visitas
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="logout()">
+                            <a class="nav-link" href="#" data-section="logout" onclick="logout()">
                                 <i class="fas fa-sign-out-alt me-2"></i>
                                 Sair
                             </a>
@@ -244,7 +240,7 @@
                                         <option value="nao_atendeu">Não Atendeu</option>
                                         <option value="remarcar">Remarcar</option>
                                         <option value="cancelada">Cancelada</option>
-                                    </select>
+                            </select>
                                 </div>
                             </div>
                         </div>
@@ -326,58 +322,65 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-vendedor" class="form-label">Vendedor</label>
-                                    <select class="form-select" id="visita-vendedor" required>
-                                        <option value="">Selecione um vendedor</option>
-                                    </select>
+                                    <label for="visita-cliente-nome" class="form-label">Nome do Cliente</label>
+                                    <input type="text" class="form-control" id="visita-cliente-nome" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-cliente" class="form-label">Cliente</label>
-                                    <input type="text" class="form-control" id="visita-cliente" required>
+                                    <label for="visita-vendedor-id" class="form-label">Vendedor</label>
+                                    <select class="form-select" id="visita-vendedor-id" required>
+                                        <!-- Opções de vendedores serão carregadas via JS -->
+                                    </select>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-data" class="form-label">Data</label>
+                                    <label for="visita-data" class="form-label">Data da Visita</label>
                                     <input type="date" class="form-control" id="visita-data" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="visita-hora" class="form-label">Hora</label>
+                                    <label for="visita-hora" class="form-label">Hora da Visita</label>
                                     <input type="time" class="form-control" id="visita-hora" required>
                                 </div>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="visita-situacao" class="form-label">Situação</label>
+                            <label for="visita-situacao" class="form-label">Situacao</label>
                             <select class="form-select" id="visita-situacao" required>
-                                <option value="">Selecione a situação</option>
                                 <option value="realizada">Realizada</option>
-                                <option value="nao_atendeu">Não Atendeu</option>
+                                <option value="nao_atendeu">Nao Atendeu</option>
                                 <option value="remarcar">Remarcar</option>
                                 <option value="cancelada">Cancelada</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="visita-observacoes" class="form-label">Observações</label>
+                            <label for="visita-observacoes" class="form-label">Observacoes</label>
                             <textarea class="form-control" id="visita-observacoes" rows="3"></textarea>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="visita-retorno-data" class="form-label">Data de Retorno</label>
-                                    <input type="date" class="form-control" id="visita-retorno-data">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="visita-retorno-necessario">
+                            <label class="form-check-label" for="visita-retorno-necessario">
+                                Exige Retorno
+                            </label>
+                        </div>
+                        <div id="retorno-fields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="visita-retorno-data" class="form-label">Data Retorno</label>
+                                        <input type="date" class="form-control" id="visita-retorno-data">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="visita-retorno-hora" class="form-label">Hora de Retorno</label>
-                                    <input type="time" class="form-control" id="visita-retorno-hora">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="visita-retorno-hora" class="form-label">Hora Retorno</label>
+                                        <input type="time" class="form-control" id="visita-retorno-hora">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -395,4 +398,5 @@
     <script src="js/admin.js"></script>
 </body>
 </html>
+
 

@@ -11,7 +11,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="App Vendedores">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <style>
         :root {
             --primary-color: #667eea;
@@ -376,27 +375,22 @@
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
         <div class="d-flex">
-            <div class="nav-item">
-                <a href="#" class="nav-link active" onclick="showSection(\'dashboard\', event)">
+            <div class="nav-item"                <a href="#" class="nav-link active" data-section="dashboard" onclick="showSection(\'dashboard\')">
                     <i class="fas fa-home"></i>
                     <span>Início</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'visitas\', event)">
-                    <i class="fas fa-calendar-check"></i>
+                <a href="#" class="nav-link" data-section="visitas" onclick="showSection(\'visitas\')">                   <i class="fas fa-calendar-check"></i>
                     <span>Visitas</span>
                 </a>
             </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'agenda\', event)">
+            <div class="nav-item"                <a href="#" class="nav-link" data-section="agenda" onclick="showSection(\'agenda\')">
                     <i class="fas fa-calendar-alt"></i>
                     <span>Agenda</span>
                 </a>
             </div>
-            <div class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection(\'perfil\', event)">
-                    <i class="fas fa-user"></i>
+            <div class="nav-item">                <a href="#" class="nav-link" data-section="perfil" onclick="showSection(\'perfil\')">                    <i class="fas fa-user"></i>
                     <span>Perfil</span>
                 </a>
             </div>
@@ -447,9 +441,9 @@
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="agendar-retorno">
-                                <label class="form-check-label" for="agendar-retorno">
-                                    Agendar Retorno
+                                <input class="form-check-input" type="checkbox" id="retorno-necessario">
+                                <label class="form-check-label" for="retorno-necessario">
+                                    Exige Retorno
                                 </label>
                             </div>
                         </div>
@@ -479,53 +473,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/offline.js"></script>
     <script src="js/app.js"></script>
-    <script>
-        // Registro do Service Worker
-        if (
-            "serviceWorker" in navigator &&
-            (window.location.protocol === "https:" ||
-                window.location.hostname === "localhost")
-        ) {
-            window.addEventListener(
-                "load",
-                function () {
-                    navigator.serviceWorker
-                        .register("../sw.js") // Caminho ajustado para a raiz
-                        .then(function (registration) {
-                            console.log(
-                                "ServiceWorker registration successful with scope: ",
-                                registration.scope
-                            );
-                        })
-                        .catch(function (err) {
-                            console.log("ServiceWorker registration failed: ", err);
-                        });
-                }
-            );
-        }
-
-        document
-            .getElementById("agendar-retorno")
-            .addEventListener("change", function () {
-                const retornoFields = document.getElementById("retorno-fields");
-                if (this.checked) {
-                    retornoFields.style.display = "block";
-                    document.getElementById("retorno-data").setAttribute("required", "true");
-                    document.getElementById("retorno-hora").setAttribute("required", "true");
-                } else {
-                    retornoFields.style.display = "none";
-                    document.getElementById("retorno-data").removeAttribute("required");
-                    document.getElementById("retorno-hora").removeAttribute("required");
-                }
-            });
-
-        document
-            .getElementById("formVisita")
-            .addEventListener("submit", function (e) {
-                e.preventDefault();
-                salvarVisita();
-            });
-    </script>
+    <script src="js/pwa-config.js"></script>
 </body>
 </html>
 
