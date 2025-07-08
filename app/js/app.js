@@ -393,10 +393,10 @@ async function salvarVisita() {
             const result = await response.json();
             if (result.message) {
                 alert(result.message);
-                myModal.hide();
-                loadVisitas();
-                loadDashboard();
-                loadAgenda();
+            myModal.hide();
+            loadVisitas();
+            loadDashboard();
+            loadAgenda();
             }
         } catch (error) {
             console.error(\'Erro ao salvar visita online:\', error);
@@ -629,12 +629,12 @@ function formatSituacao(situacao) {
 
 function getSituacaoColor(situacao) {
     const colors = {
-        \'realizada\': \'success\',
-        \'nao_atendeu\': \'warning\',
-        \'remarcar\': \'info\',
-        \'cancelada\': \'danger\'
+        'realizada': 'success',
+        'nao_atendeu': 'warning',
+        'remarcar': 'info',
+        'cancelada': 'danger'
     };
-    return colors[situacao] || \'secondary\';
+    return colors[situacao] || 'secondary';
 }
 
 // Expor funções globalmente para o HTML
@@ -654,7 +654,7 @@ window.loadDashboard = loadDashboard; // Expor para o filtro de data
 // window.syncData
 
 // Chamar checkAuth ao carregar a página
-document.addEventListener(\'DOMContentLoaded\', checkAuth);
+document.addEventListener('DOMContentLoaded', checkAuth);
 
 
 
