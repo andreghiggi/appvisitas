@@ -10,33 +10,33 @@ let myModal;
 
 // Funções de Autenticação
 function checkAuth() {
-    let userData = sessionStorage.getItem(\'userData\') || localStorage.getItem(\'userData\');
+    let userData = sessionStorage.getItem('userData') || localStorage.getItem('userData');
 
     if (userData) {
         currentUser = JSON.parse(userData);
-        if (currentUser.perfil === \'vendedor\') {
+        if (currentUser.perfil === 'vendedor') {
             // Se o usuário é um vendedor, inicializa o app
             initializeApp();
-        } else {
+          } else {
             // Se for admin, redireciona para o painel de admin
-            alert(\'Acesso incorreto. Redirecionando para o painel de administrador.\');
-            window.location.replace(\'../admin/index.html\');
+            alert('Acesso incorreto. Redirecionando para o painel de administrador.');
+            window.location.replace('../admin/index.html');
         }
     } else {
-        // Se não há dados de usuário, redireciona para o login
-        window.location.replace(\'../login.html\');
+        // Se não há dados de usuário, redireciona para login
+        window.location.replace('../login.html');
     }
 }
 
 // Inicialização do App (só é chamada se o usuário for um vendedor autenticado)
 function initializeApp() {
-    document.getElementById(\'user-info\').textContent = currentUser.nome;
-    document.getElementById(\'perfil-nome\').textContent = currentUser.nome;
-    document.getElementById(\'perfil-email\').textContent = currentUser.email;
+    document.getElementById('user-info').textContent = currentUser.nome;
+    document.getElementById('perfil-nome').textContent = currentUser.nome;
+    document.getElementById('perfil-email').textContent = currentUser.email;
 
     setupEventListeners();
     updateOnlineStatus();
-    showSection(\'dashboard\'); // Mostra a seção inicial
+    showSection('dashboard'); // Mostra a seção inicial
 }
 
 // Configurar listeners de eventos
