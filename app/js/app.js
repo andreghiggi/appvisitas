@@ -102,6 +102,18 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Event listener para o botão FAB
+    const fabBtn = document.querySelector('.fab');
+    if (fabBtn) {
+        fabBtn.addEventListener('click', () => {
+            if (typeof showModalVisita === 'function') {
+                showModalVisita();
+            } else {
+                console.log('Função showModalVisita não disponível');
+            }
+        });
+    }
 }
 
 // Atualizar status online/offline
@@ -358,6 +370,19 @@ async function loadPerfil() {
     const lastSync = localStorage.getItem('lastSync');
     if (lastSync) {
         document.getElementById('ultima-sync').textContent = new Date(lastSync).toLocaleString();
+    }
+}
+
+// Mostrar modal de visita
+function showModalVisita() {
+    // Limpar formulário
+    document.getElementById('formVisita').reset();
+    document.getElementById('visita-id').value = '';
+    document.getElementById('retorno-fields').style.display = 'none';
+    
+    // Mostrar modal
+    if (myModal) {
+        myModal.show();
     }
 }
 
@@ -659,6 +684,7 @@ function getSituacaoColor(situacao) {
 // Expor funções globalmente para o HTML
 window.showSection = showSection;
 window.logout = logout;
+window.showModalVisita = showModalVisita;
 window.salvarVisita = salvarVisita;
 window.editarVisita = editarVisita;
 window.excluirVisita = excluirVisita;
