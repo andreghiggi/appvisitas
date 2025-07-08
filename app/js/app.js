@@ -83,6 +83,25 @@ function setupEventListeners() {
             showSection(sectionId);
         });
     });
+
+    // Event listeners para botões do cabeçalho
+    const logoutBtn = document.querySelector('button[onclick="logout()"]');
+    if (logoutBtn) {
+        logoutBtn.removeAttribute('onclick');
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    const syncBtn = document.querySelector('button[onclick="syncData()"]');
+    if (syncBtn) {
+        syncBtn.removeAttribute('onclick');
+        syncBtn.addEventListener('click', () => {
+            if (typeof syncData === 'function') {
+                syncData();
+            } else {
+                console.log('Função syncData não disponível');
+            }
+        });
+    }
 }
 
 // Atualizar status online/offline
